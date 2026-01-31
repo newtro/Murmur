@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Build output
+.vite/
+out/
+dist/
+
+# IDE
+.idea/
+*.swp
+*.swo
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Whisper models (downloaded separately)
+resources/models/
+
+# Database (contains user data)
+*.db
+
+# Temporary files
+*.tmp
+*.temp

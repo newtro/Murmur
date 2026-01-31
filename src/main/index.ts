@@ -218,26 +218,26 @@ function cancelRecording() {
 function createTray() {
   console.log('[Murmur] Creating tray icon...');
 
-  // Try to load icon from file, fallback to embedded PNG
-  const iconPath = path.join(app.getAppPath(), 'resources', 'icons', 'tray-icon.ico');
-  let trayIcon: Electron.NativeImage;
-
-  if (fs.existsSync(iconPath)) {
-    console.log('[Murmur] Loading tray icon from:', iconPath);
-    trayIcon = nativeImage.createFromPath(iconPath);
-  } else {
-    // Fallback: create from embedded PNG data (16x16 microphone icon)
-    console.log('[Murmur] Using fallback tray icon');
-    const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdgAAAHYBTnsmCAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAADESURBVDiNtZMxCsJAEEX/JFZewNrCwtrGwsLSwsbCm3gCL2BhZ2FjYWFhYWFhYZELCGJhYSV2QhITNYGAH4ZZmPdnZndXeF9wX1BI74FeGAIW0AIaoAZUgCqgApSAIlAA8kAOyAIZIE2y6wP8b4CY7wEB4BvYAxZAGZgDYyAFDIEBkCAZ9gH+N4DaHwNWwA5YAgtgBoSAOhAHekAXaAPNT4BPAJ6O8wm4AM7AGjgBe+AAnIEjcAASwJVk2QPy1wfY/8MdVX0Amd4uY74AAAAASUVORK5CYII=';
-    trayIcon = nativeImage.createFromDataURL('data:image/png;base64,' + pngBase64);
-  }
-
-  // Ensure icon is valid
-  if (trayIcon.isEmpty()) {
-    console.error('[Murmur] Tray icon is empty, using fallback');
-    const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdgAAAHYBTnsmCAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAADESURBVDiNtZMxCsJAEEX/JFZewNrCwtrGwsLSwsbCm3gCL2BhZ2FjYWFhYWFhYZELCGJhYSV2QhITNYGAH4ZZmPdnZndXeF9wX1BI74FeGAIW0AIaoAZUgCqgApSAIlAA8kAOyAIZIE2y6wP8b4CY7wEB4BvYAxZAGZgDYyAFDIEBkCAZ9gH+N4DaHwNWwA5YAgtgBoSAOhAHekAXaAPNT4BPAJ6O8wm4AM7AGjgBe+AAnIEjcAASwJVk2QPy1wfY/8MdVX0Amd4uY74AAAAASUVORK5CYII=';
-    trayIcon = nativeImage.createFromDataURL('data:image/png;base64,' + pngBase64);
-  }
+  // Always use embedded 16x16 PNG icon (red circle as simple indicator)
+  // This is a simple red dot icon that will definitely work
+  const iconData = Buffer.from([
+    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
+    0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x10,
+    0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0xF3, 0xFF, 0x61, 0x00, 0x00, 0x00,
+    0x5A, 0x49, 0x44, 0x41, 0x54, 0x38, 0xCB, 0x63, 0x60, 0x18, 0x05, 0x83,
+    0x00, 0x30, 0x32, 0x30, 0xFC, 0xFF, 0x8F, 0x21, 0xF1, 0x50, 0x30, 0x6F,
+    0xDE, 0xBC, 0xFF, 0x40, 0x80, 0x05, 0x60, 0x02, 0x2A, 0x2A, 0x2A, 0xFF,
+    0x1F, 0x3E, 0x7C, 0xA8, 0x08, 0x12, 0x64, 0xC0, 0x02, 0x40, 0x9A, 0x40,
+    0x00, 0x43, 0x00, 0x19, 0x80, 0x34, 0x61, 0x00, 0x14, 0x00, 0xA4, 0x00,
+    0x05, 0x30, 0x32, 0x32, 0x92, 0xE4, 0x0A, 0x64, 0x80, 0x53, 0x13, 0xC9,
+    0x2E, 0x00, 0x89, 0x13, 0x7B, 0x01, 0x48, 0x3C, 0x02, 0x36, 0x80, 0x1D,
+    0x30, 0x64, 0x00, 0x4E, 0x2F, 0x91, 0x04, 0xA0, 0x97, 0x90, 0x64, 0x03,
+    0xCC, 0x89, 0xE8, 0x32, 0xC8, 0x3F, 0x00, 0x80, 0xD0, 0x30, 0x4A, 0xBC,
+    0xBE, 0xF1, 0xAF, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
+    0x42, 0x60, 0x82
+  ]);
+  const trayIcon = nativeImage.createFromBuffer(iconData);
+  console.log('[Murmur] Icon size:', trayIcon.getSize());
 
   tray = new Tray(trayIcon);
   tray.setToolTip('Murmur - Voice Dictation');

@@ -1,158 +1,282 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Settings as SettingsIcon, Key, Keyboard, Cpu, BookOpen, X } from 'lucide-react';
-import { ApiKeys } from './ApiKeys';
-import { Hotkeys } from './Hotkeys';
-import { Models } from './Models';
-import { Dictionary } from './Dictionary';
 import type { AppSettings } from '../../../shared/types';
 
-type Tab = 'api-keys' | 'hotkeys' | 'models' | 'dictionary';
+// Simple inline styles for debugging - no Tailwind dependency
+const styles = {
+  container: {
+    minHeight: '100vh',
+    backgroundColor: '#111827',
+    color: 'white',
+    fontFamily: 'system-ui, -apple-system, sans-serif',
+    padding: '20px',
+  },
+  header: {
+    fontSize: '24px',
+    fontWeight: 'bold',
+    marginBottom: '20px',
+    color: '#60a5fa',
+  },
+  loading: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100vh',
+    backgroundColor: '#111827',
+    color: 'white',
+  },
+  tabs: {
+    display: 'flex',
+    gap: '10px',
+    marginBottom: '20px',
+  },
+  tab: {
+    padding: '10px 20px',
+    backgroundColor: '#374151',
+    border: 'none',
+    borderRadius: '8px',
+    color: 'white',
+    cursor: 'pointer',
+    fontSize: '14px',
+  },
+  tabActive: {
+    padding: '10px 20px',
+    backgroundColor: '#3b82f6',
+    border: 'none',
+    borderRadius: '8px',
+    color: 'white',
+    cursor: 'pointer',
+    fontSize: '14px',
+  },
+  section: {
+    backgroundColor: '#1f2937',
+    padding: '20px',
+    borderRadius: '8px',
+    marginBottom: '15px',
+  },
+  label: {
+    display: 'block',
+    marginBottom: '5px',
+    color: '#9ca3af',
+    fontSize: '14px',
+  },
+  input: {
+    width: '100%',
+    padding: '10px',
+    backgroundColor: '#374151',
+    border: '1px solid #4b5563',
+    borderRadius: '6px',
+    color: 'white',
+    fontSize: '14px',
+    marginBottom: '15px',
+  },
+  button: {
+    padding: '10px 20px',
+    backgroundColor: '#3b82f6',
+    border: 'none',
+    borderRadius: '6px',
+    color: 'white',
+    cursor: 'pointer',
+    fontSize: '14px',
+  },
+  error: {
+    color: '#ef4444',
+    padding: '10px',
+    backgroundColor: '#7f1d1d',
+    borderRadius: '6px',
+    marginBottom: '15px',
+  },
+};
 
-const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: 'api-keys', label: 'API Keys', icon: <Key size={18} /> },
-  { id: 'hotkeys', label: 'Hotkeys', icon: <Keyboard size={18} /> },
-  { id: 'models', label: 'Models', icon: <Cpu size={18} /> },
-  { id: 'dictionary', label: 'Dictionary', icon: <BookOpen size={18} /> },
-];
+type Tab = 'api-keys' | 'hotkeys' | 'models';
 
 export function Settings() {
   const [activeTab, setActiveTab] = useState<Tab>('api-keys');
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadSettings();
   }, []);
 
   const loadSettings = async () => {
+    console.log('[Settings] Loading settings...');
     try {
+      if (!window.murmur) {
+        throw new Error('window.murmur is not defined - preload script not loaded');
+      }
       const currentSettings = await window.murmur.getSettings();
+      console.log('[Settings] Settings loaded:', currentSettings);
       setSettings(currentSettings);
-    } catch (error) {
-      console.error('Failed to load settings:', error);
+    } catch (err) {
+      console.error('[Settings] Failed to load settings:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load settings');
     } finally {
       setLoading(false);
     }
   };
 
-  const updateSettings = async (updates: Partial<AppSettings>) => {
+  const updateApiKey = async (provider: string, value: string) => {
     if (!settings) return;
-
-    setSaving(true);
     try {
-      const updated = await window.murmur.setSettings(updates);
+      const updated = await window.murmur.setSettings({
+        apiKeys: {
+          ...settings.apiKeys,
+          [provider]: value,
+        },
+      });
       setSettings(updated);
-    } catch (error) {
-      console.error('Failed to save settings:', error);
-    } finally {
-      setSaving(false);
+    } catch (err) {
+      console.error('Failed to update API key:', err);
     }
   };
 
-  const handleClose = () => {
-    window.murmur.closeSettings();
-  };
-
-  if (loading || !settings) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-900">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+      <div style={styles.loading}>
+        <div>Loading settings...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={styles.container}>
+        <h1 style={styles.header}>Murmur Settings</h1>
+        <div style={styles.error}>
+          <strong>Error:</strong> {error}
+        </div>
+        <button style={styles.button} onClick={loadSettings}>
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (!settings) {
+    return (
+      <div style={styles.container}>
+        <h1 style={styles.header}>Murmur Settings</h1>
+        <div style={styles.error}>No settings available</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      {/* Header */}
-      <header className="sticky top-0 z-10 bg-gray-900/95 backdrop-blur border-b border-gray-800">
-        <div className="flex items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3">
-            <SettingsIcon className="text-blue-400" size={24} />
-            <h1 className="text-xl font-semibold">Murmur Settings</h1>
+    <div style={styles.container}>
+      <h1 style={styles.header}>Murmur Settings</h1>
+
+      {/* Tabs */}
+      <div style={styles.tabs}>
+        <button
+          style={activeTab === 'api-keys' ? styles.tabActive : styles.tab}
+          onClick={() => setActiveTab('api-keys')}
+        >
+          API Keys
+        </button>
+        <button
+          style={activeTab === 'hotkeys' ? styles.tabActive : styles.tab}
+          onClick={() => setActiveTab('hotkeys')}
+        >
+          Hotkeys
+        </button>
+        <button
+          style={activeTab === 'models' ? styles.tabActive : styles.tab}
+          onClick={() => setActiveTab('models')}
+        >
+          Models
+        </button>
+      </div>
+
+      {/* API Keys Tab */}
+      {activeTab === 'api-keys' && (
+        <div>
+          <div style={styles.section}>
+            <label style={styles.label}>Groq API Key</label>
+            <input
+              type="password"
+              style={styles.input}
+              value={settings.apiKeys.groq || ''}
+              onChange={(e) => updateApiKey('groq', e.target.value)}
+              placeholder="gsk_..."
+            />
           </div>
-          <button
-            onClick={handleClose}
-            className="p-2 rounded-lg hover:bg-gray-800 transition-colors"
-          >
-            <X size={20} />
-          </button>
+
+          <div style={styles.section}>
+            <label style={styles.label}>OpenAI API Key</label>
+            <input
+              type="password"
+              style={styles.input}
+              value={settings.apiKeys.openai || ''}
+              onChange={(e) => updateApiKey('openai', e.target.value)}
+              placeholder="sk-..."
+            />
+          </div>
+
+          <div style={styles.section}>
+            <label style={styles.label}>Anthropic API Key</label>
+            <input
+              type="password"
+              style={styles.input}
+              value={settings.apiKeys.anthropic || ''}
+              onChange={(e) => updateApiKey('anthropic', e.target.value)}
+              placeholder="sk-ant-..."
+            />
+          </div>
+
+          <div style={styles.section}>
+            <label style={styles.label}>Google Gemini API Key</label>
+            <input
+              type="password"
+              style={styles.input}
+              value={settings.apiKeys.gemini || ''}
+              onChange={(e) => updateApiKey('gemini', e.target.value)}
+              placeholder="AIza..."
+            />
+          </div>
         </div>
+      )}
 
-        {/* Tabs */}
-        <nav className="flex gap-1 px-6 pb-2">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`
-                flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors
-                ${activeTab === tab.id
-                  ? 'bg-blue-500/20 text-blue-400'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                }
-              `}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-      </header>
+      {/* Hotkeys Tab */}
+      {activeTab === 'hotkeys' && (
+        <div style={styles.section}>
+          <label style={styles.label}>Activation Mode</label>
+          <p style={{ color: '#9ca3af', marginBottom: '10px' }}>
+            Current: {settings.hotkeys.activationMode}
+          </p>
+          <label style={styles.label}>Hotkey</label>
+          <p style={{ color: '#9ca3af' }}>
+            Current: {settings.hotkeys.toggleRecording}
+          </p>
+        </div>
+      )}
 
-      {/* Content */}
-      <main className="p-6">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-          >
-            {activeTab === 'api-keys' && (
-              <ApiKeys
-                settings={settings}
-                onUpdate={updateSettings}
-                saving={saving}
-              />
-            )}
-            {activeTab === 'hotkeys' && (
-              <Hotkeys
-                settings={settings}
-                onUpdate={updateSettings}
-                saving={saving}
-              />
-            )}
-            {activeTab === 'models' && (
-              <Models
-                settings={settings}
-                onUpdate={updateSettings}
-                saving={saving}
-              />
-            )}
-            {activeTab === 'dictionary' && (
-              <Dictionary />
-            )}
-          </motion.div>
-        </AnimatePresence>
-      </main>
+      {/* Models Tab */}
+      {activeTab === 'models' && (
+        <div>
+          <div style={styles.section}>
+            <label style={styles.label}>Transcription Provider</label>
+            <p style={{ color: '#9ca3af', marginBottom: '10px' }}>
+              Current: {settings.transcriptionProvider}
+            </p>
+            <label style={styles.label}>Transcription Model</label>
+            <p style={{ color: '#9ca3af' }}>
+              Current: {settings.transcriptionModel}
+            </p>
+          </div>
 
-      {/* Saving indicator */}
-      <AnimatePresence>
-        {saving && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className="fixed bottom-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2"
-          >
-            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-            Saving...
-          </motion.div>
-        )}
-      </AnimatePresence>
+          <div style={styles.section}>
+            <label style={styles.label}>LLM Provider</label>
+            <p style={{ color: '#9ca3af', marginBottom: '10px' }}>
+              Current: {settings.llmProvider}
+            </p>
+            <label style={styles.label}>Processing Mode</label>
+            <p style={{ color: '#9ca3af' }}>
+              Current: {settings.processingMode}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

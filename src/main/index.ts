@@ -218,12 +218,24 @@ function cancelRecording() {
 function createTray() {
   console.log('[Murmur] Creating tray icon...');
 
-  const iconPath = path.join(process.cwd(), 'resources', 'icons', 'tray-icon.ico');
-  let trayIcon: string | Electron.NativeImage = iconPath;
+  // Try to load icon from file, fallback to embedded PNG
+  const iconPath = path.join(app.getAppPath(), 'resources', 'icons', 'tray-icon.ico');
+  let trayIcon: Electron.NativeImage;
 
-  if (!fs.existsSync(iconPath)) {
-    // Create from data URL as fallback
-    const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdgAAAHYBTnsmCAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAB4SURBVDiNY2AYBcMBMDIw/P+PQ54RiYORJSUlpf///v37fwyJh4J58+b9BwIsABNQUVH5//DhQ4ogQQYsAKQJBDAEkAFIEwZAEQApQAGMjIwkuQIZ4NREsgtA4sReABKPgA1gBwwZgNNLJAHoJSTZAHMiugzyDwCA0DBKvL7xrwAAAABJRU5ErkJggg==';
+  if (fs.existsSync(iconPath)) {
+    console.log('[Murmur] Loading tray icon from:', iconPath);
+    trayIcon = nativeImage.createFromPath(iconPath);
+  } else {
+    // Fallback: create from embedded PNG data (16x16 microphone icon)
+    console.log('[Murmur] Using fallback tray icon');
+    const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdgAAAHYBTnsmCAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAADESURBVDiNtZMxCsJAEEX/JFZewNrCwtrGwsLSwsbCm3gCL2BhZ2FjYWFhYWFhYZELCGJhYSV2QhITNYGAH4ZZmPdnZndXeF9wX1BI74FeGAIW0AIaoAZUgCqgApSAIlAA8kAOyAIZIE2y6wP8b4CY7wEB4BvYAxZAGZgDYyAFDIEBkCAZ9gH+N4DaHwNWwA5YAgtgBoSAOhAHekAXaAPNT4BPAJ6O8wm4AM7AGjgBe+AAnIEjcAASwJVk2QPy1wfY/8MdVX0Amd4uY74AAAAASUVORK5CYII=';
+    trayIcon = nativeImage.createFromDataURL('data:image/png;base64,' + pngBase64);
+  }
+
+  // Ensure icon is valid
+  if (trayIcon.isEmpty()) {
+    console.error('[Murmur] Tray icon is empty, using fallback');
+    const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdgAAAHYBTnsmCAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAADESURBVDiNtZMxCsJAEEX/JFZewNrCwtrGwsLSwsbCm3gCL2BhZ2FjYWFhYWFhYZELCGJhYSV2QhITNYGAH4ZZmPdnZndXeF9wX1BI74FeGAIW0AIaoAZUgCqgApSAIlAA8kAOyAIZIE2y6wP8b4CY7wEB4BvYAxZAGZgDYyAFDIEBkCAZ9gH+N4DaHwNWwA5YAgtgBoSAOhAHekAXaAPNT4BPAJ6O8wm4AM7AGjgBe+AAnIEjcAASwJVk2QPy1wfY/8MdVX0Amd4uY74AAAAASUVORK5CYII=';
     trayIcon = nativeImage.createFromDataURL('data:image/png;base64,' + pngBase64);
   }
 

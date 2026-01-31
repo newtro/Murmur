@@ -9,33 +9,56 @@ declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
 
 export function createSettingsWindow(): BrowserWindow {
+  // For Electron Forge + Vite, preload is built to same dir as main
+  const preloadPath = path.join(__dirname, 'preload.js');
+  console.log('[Settings] Creating window...');
+  console.log('[Settings] Preload path:', preloadPath);
+  console.log('[Settings] __dirname:', __dirname);
+
   const settingsWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 900,
+    height: 700,
     minWidth: 600,
     minHeight: 400,
     title: 'Murmur Settings',
     show: false,
     webPreferences: {
-      preload: path.join(__dirname, '../preload/index.js'),
+      preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
     },
   });
 
+  // Open DevTools in development to see errors
+  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+    settingsWindow.webContents.openDevTools({ mode: 'detach' });
+  }
+
+  // Log any errors
+  settingsWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
+    console.error('[Settings] Failed to load:', errorCode, errorDescription);
+  });
+
+  // Forward console messages from renderer
+  settingsWindow.webContents.on('console-message', (_event, _level, message) => {
+    console.log('[Settings Console]', message);
+  });
+
   // Show when ready
   settingsWindow.once('ready-to-show', () => {
+    console.log('[Settings] Window ready to show');
     settingsWindow.show();
   });
 
   // Load the settings HTML
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+    console.log('[Settings] Loading dev URL:', MAIN_WINDOW_VITE_DEV_SERVER_URL);
     settingsWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
   } else {
-    settingsWindow.loadFile(
-      path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`)
-    );
+    const filePath = path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`);
+    console.log('[Settings] Loading file:', filePath);
+    settingsWindow.loadFile(filePath);
   }
 
   return settingsWindow;

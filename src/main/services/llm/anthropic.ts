@@ -27,7 +27,7 @@ export class AnthropicLLMProvider {
     }
 
     const response = await this.client.messages.create({
-      model: model || 'claude-3-5-haiku-latest',
+      model: model || 'claude-haiku-4-5-20251001',
       max_tokens: 4096,
       messages: [{ role: 'user', content: prompt }],
     });
@@ -45,7 +45,7 @@ export class AnthropicLLMProvider {
       const testClient = new Anthropic({ apiKey });
       // Make a minimal request to validate
       await testClient.messages.create({
-        model: 'claude-3-5-haiku-latest',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 10,
         messages: [{ role: 'user', content: 'Hi' }],
       });

@@ -29,8 +29,9 @@ export function Waveform({ audioLevel }: WaveformProps) {
       const barWidth = (width / BAR_COUNT) * 0.7;
       const gap = (width / BAR_COUNT) * 0.3;
 
-      // Update bars based on audio level
-      const level = audioLevel?.level ?? 0;
+      // Update bars based on audio level (scaled up for visibility)
+      const rawLevel = audioLevel?.average ?? 0;
+      const level = Math.min(1, rawLevel * 4);
       const targetBars = generateBars(level);
 
       // Smooth transition

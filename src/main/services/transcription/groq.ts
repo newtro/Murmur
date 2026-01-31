@@ -50,11 +50,18 @@ export class GroqTranscriptionProvider {
 
     const duration = (Date.now() - startTime) / 1000;
 
+    // verbose_json includes language and segments
+    const verboseResponse = response as {
+      text: string;
+      language?: string;
+      segments?: Array<{ start: number; end: number; text: string }>;
+    };
+
     return {
       text: response.text,
       duration,
-      language: response.language,
-      segments: response.segments?.map(seg => ({
+      language: verboseResponse.language,
+      segments: verboseResponse.segments?.map(seg => ({
         start: seg.start,
         end: seg.end,
         text: seg.text,

@@ -64,11 +64,11 @@ export interface AppSettings {
 // Default Settings
 export const DEFAULT_SETTINGS: AppSettings = {
   transcriptionProvider: 'groq',
-  transcriptionModel: 'whisper-large-v3',
+  transcriptionModel: 'whisper-large-v3-turbo',
   language: 'auto',
 
   llmProvider: 'groq',
-  llmModel: 'llama-3.3-70b-versatile',
+  llmModel: 'meta-llama/llama-4-scout-17b-16e-instruct',
   processingMode: 'clean',
 
   apiKeys: {},

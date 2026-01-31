@@ -18,42 +18,50 @@ export function Overlay({ state, duration, wordCount, error, audioLevel }: Overl
   }
 
   return (
-    <div className="fixed inset-0 flex items-end justify-center pb-8 pointer-events-none">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={state}
-          initial={{ opacity: 0, y: 20, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 10, scale: 0.95 }}
-          transition={{ duration: 0.2 }}
-          className="bg-gray-900/90 backdrop-blur-xl rounded-full px-6 py-3 shadow-2xl border border-gray-700/50 pointer-events-auto"
-        >
-          <div className="flex items-center gap-4">
-            <StatusIcon state={state} />
-            <StatusContent
-              state={state}
-              duration={duration}
-              wordCount={wordCount}
-              error={error}
-              audioLevel={audioLevel}
-            />
-          </div>
-        </motion.div>
-      </AnimatePresence>
-    </div>
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={state}
+        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 5, scale: 0.95 }}
+        transition={{ duration: 0.15 }}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          padding: '12px 20px',
+          background: 'rgba(24, 24, 27, 0.95)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: '9999px',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+          WebkitAppRegion: 'drag',
+        } as React.CSSProperties}
+      >
+        <StatusIcon state={state} />
+        <StatusContent
+          state={state}
+          duration={duration}
+          wordCount={wordCount}
+          error={error}
+          audioLevel={audioLevel}
+        />
+      </motion.div>
+    </AnimatePresence>
   );
 }
 
 function StatusIcon({ state }: { state: OverlayState }) {
+  const iconStyle = { WebkitAppRegion: 'no-drag' } as React.CSSProperties;
+
   switch (state) {
     case 'listening':
       return (
         <motion.div
-          animate={{ scale: [1, 1.2, 1] }}
-          transition={{ duration: 1, repeat: Infinity }}
-          className="text-red-500"
+          animate={{ scale: [1, 1.15, 1] }}
+          transition={{ duration: 1.2, repeat: Infinity }}
+          style={{ color: '#ef4444', ...iconStyle }}
         >
-          <Mic size={20} />
+          <Mic size={18} />
         </motion.div>
       );
     case 'processing':
@@ -61,9 +69,17 @@ function StatusIcon({ state }: { state: OverlayState }) {
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-          className="text-blue-400"
+          style={{
+            color: '#60a5fa',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 18,
+            height: 18,
+            ...iconStyle,
+          }}
         >
-          <Loader2 size={20} />
+          <Loader2 size={18} style={{ display: 'block' }} />
         </motion.div>
       );
     case 'complete':
@@ -71,15 +87,15 @@ function StatusIcon({ state }: { state: OverlayState }) {
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          className="text-green-400"
+          style={{ color: '#4ade80', ...iconStyle }}
         >
-          <Check size={20} />
+          <Check size={18} />
         </motion.div>
       );
     case 'error':
       return (
-        <motion.div className="text-yellow-400">
-          <AlertCircle size={20} />
+        <motion.div style={{ color: '#fbbf24', ...iconStyle }}>
+          <AlertCircle size={18} />
         </motion.div>
       );
     default:
@@ -100,29 +116,39 @@ function StatusContent({
   error: string | null;
   audioLevel: AudioLevel | null;
 }) {
+  const textStyle = {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: '13px',
+    fontWeight: 500,
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  } as React.CSSProperties;
+
   switch (state) {
     case 'listening':
       return (
-        <div className="flex items-center gap-3">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', ...textStyle }}>
           <Waveform audioLevel={audioLevel} />
-          <span className="text-white/80 text-sm font-medium tabular-nums min-w-[40px]">
+          <span style={{
+            fontVariantNumeric: 'tabular-nums',
+            minWidth: '36px',
+          }}>
             {formatDuration(duration)}
           </span>
         </div>
       );
     case 'processing':
       return (
-        <span className="text-white/80 text-sm">Processing...</span>
+        <span style={textStyle}>Processing...</span>
       );
     case 'complete':
       return (
-        <span className="text-white/80 text-sm">
+        <span style={textStyle}>
           Inserted {wordCount} words
         </span>
       );
     case 'error':
       return (
-        <span className="text-yellow-200 text-sm">
+        <span style={{ ...textStyle, color: '#fef08a' }}>
           {error || 'An error occurred'}
         </span>
       );

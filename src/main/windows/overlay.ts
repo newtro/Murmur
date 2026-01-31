@@ -41,8 +41,9 @@ export function createOverlayWindow(): BrowserWindow {
     alwaysOnTop: true,
     skipTaskbar: true,
     resizable: false,
-    hasShadow: true,
+    hasShadow: false, // No shadow for transparent window
     show: false, // Start hidden
+    focusable: false, // Don't steal focus from other apps
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

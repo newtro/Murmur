@@ -1,285 +1,586 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import type { AppSettings, TranscriptionProvider, LLMProvider, ProcessingMode, ActivationMode } from '../../../shared/types';
+import type { AppSettings, TranscriptionProvider, LLMProvider, ProcessingMode } from '../../../shared/types';
+import {
+  Zap,
+  Bot,
+  Monitor,
+  Brain,
+  Sparkles,
+  FileText,
+  Gem,
+  Mic,
+  Keyboard,
+  Volume2,
+  Target,
+  RefreshCw,
+  Eye,
+  EyeOff,
+  Square,
+  Check,
+  Settings as SettingsIcon,
+  Loader2,
+} from 'lucide-react';
 
-// Professional dark theme styles
+// Modern dark theme
 const theme = {
-  bg: '#0f172a',
-  bgSecondary: '#1e293b',
-  bgTertiary: '#334155',
-  border: '#475569',
-  text: '#f8fafc',
-  textSecondary: '#94a3b8',
+  bg: '#09090b',
+  bgCard: '#18181b',
+  bgHover: '#27272a',
+  bgSelected: '#3f3f46',
+  border: '#27272a',
+  borderFocus: '#3b82f6',
+  text: '#fafafa',
+  textMuted: '#a1a1aa',
+  textDim: '#71717a',
   primary: '#3b82f6',
   primaryHover: '#2563eb',
   success: '#22c55e',
+  warning: '#f59e0b',
   error: '#ef4444',
 };
 
-const baseStyles: Record<string, React.CSSProperties> = {
-  app: {
-    minHeight: '100vh',
-    backgroundColor: theme.bg,
-    color: theme.text,
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-  },
-  header: {
-    padding: '20px 24px',
-    borderBottom: `1px solid ${theme.border}`,
-    backgroundColor: theme.bgSecondary,
-  },
-  headerTitle: {
-    fontSize: '20px',
-    fontWeight: 600,
-    margin: 0,
-  },
-  nav: {
-    display: 'flex',
-    gap: '4px',
-    padding: '0 24px',
-    backgroundColor: theme.bgSecondary,
-    borderBottom: `1px solid ${theme.border}`,
-  },
-  navButton: {
-    padding: '12px 20px',
-    background: 'transparent',
-    border: 'none',
-    color: theme.textSecondary,
-    fontSize: '14px',
-    fontWeight: 500,
-    cursor: 'pointer',
-    borderBottom: '2px solid transparent',
-    transition: 'all 0.2s',
-  },
-  navButtonActive: {
-    color: theme.primary,
-    borderBottomColor: theme.primary,
-  },
-  content: {
-    padding: '24px',
-    maxWidth: '800px',
-  },
-  section: {
-    backgroundColor: theme.bgSecondary,
-    borderRadius: '12px',
-    padding: '20px',
-    marginBottom: '16px',
-  },
-  sectionTitle: {
-    fontSize: '16px',
-    fontWeight: 600,
-    marginBottom: '16px',
-    color: theme.text,
-  },
-  field: {
-    marginBottom: '16px',
-  },
-  label: {
-    display: 'block',
-    fontSize: '13px',
-    fontWeight: 500,
-    color: theme.textSecondary,
-    marginBottom: '6px',
-  },
-  input: {
-    width: '100%',
-    padding: '10px 12px',
-    backgroundColor: theme.bgTertiary,
-    border: `1px solid ${theme.border}`,
-    borderRadius: '8px',
-    color: theme.text,
-    fontSize: '14px',
-    outline: 'none',
-    boxSizing: 'border-box' as const,
-  },
-  select: {
-    width: '100%',
-    padding: '10px 12px',
-    backgroundColor: theme.bgTertiary,
-    border: `1px solid ${theme.border}`,
-    borderRadius: '8px',
-    color: theme.text,
-    fontSize: '14px',
-    outline: 'none',
-    cursor: 'pointer',
-    boxSizing: 'border-box' as const,
-  },
-  button: {
-    padding: '10px 20px',
-    backgroundColor: theme.primary,
-    border: 'none',
-    borderRadius: '8px',
-    color: 'white',
-    fontSize: '14px',
-    fontWeight: 500,
-    cursor: 'pointer',
-    transition: 'background-color 0.2s',
-  },
-  buttonSecondary: {
-    padding: '10px 20px',
-    backgroundColor: theme.bgTertiary,
-    border: `1px solid ${theme.border}`,
-    borderRadius: '8px',
-    color: theme.text,
-    fontSize: '14px',
-    fontWeight: 500,
-    cursor: 'pointer',
-  },
-  row: {
-    display: 'flex',
-    gap: '12px',
-    alignItems: 'center',
-  },
-  grid: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '16px',
-  },
-  hotkeyDisplay: {
-    padding: '12px 16px',
-    backgroundColor: theme.bgTertiary,
-    border: `2px solid ${theme.border}`,
-    borderRadius: '8px',
-    fontFamily: 'monospace',
-    fontSize: '14px',
-    textAlign: 'center' as const,
-    cursor: 'pointer',
-    transition: 'border-color 0.2s',
-  },
-  modeButton: {
-    flex: 1,
-    padding: '16px',
-    backgroundColor: theme.bgTertiary,
-    border: `2px solid ${theme.border}`,
-    borderRadius: '8px',
-    color: theme.text,
-    fontSize: '14px',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    textAlign: 'left' as const,
-  },
-  modeButtonActive: {
-    borderColor: theme.primary,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-  },
-  description: {
-    fontSize: '12px',
-    color: theme.textSecondary,
-    marginTop: '4px',
-  },
-  saveIndicator: {
-    position: 'fixed' as const,
-    bottom: '20px',
-    right: '20px',
-    padding: '12px 20px',
-    backgroundColor: theme.success,
-    borderRadius: '8px',
-    color: 'white',
-    fontSize: '14px',
-    fontWeight: 500,
-  },
-};
-
-const TRANSCRIPTION_PROVIDERS: { id: TranscriptionProvider; name: string; models: { id: string; name: string }[] }[] = [
-  {
-    id: 'groq',
-    name: 'Groq (Cloud)',
-    models: [
-      { id: 'whisper-large-v3', name: 'Whisper Large V3' },
-      { id: 'whisper-large-v3-turbo', name: 'Whisper Large V3 Turbo' },
-    ],
-  },
-  {
-    id: 'openai',
-    name: 'OpenAI (Cloud)',
-    models: [
-      { id: 'whisper-1', name: 'Whisper-1' },
-      { id: 'gpt-4o-transcribe', name: 'GPT-4o Transcribe' },
-      { id: 'gpt-4o-mini-transcribe', name: 'GPT-4o Mini Transcribe' },
-    ],
-  },
-  {
-    id: 'local',
-    name: 'Local (whisper.cpp)',
-    models: [
-      { id: 'tiny', name: 'Tiny (75MB)' },
-      { id: 'base', name: 'Base (142MB)' },
-      { id: 'small', name: 'Small (466MB)' },
-      { id: 'medium', name: 'Medium (1.5GB)' },
-      { id: 'large-v3-turbo', name: 'Large V3 Turbo (1.6GB)' },
-    ],
-  },
-];
-
-const LLM_PROVIDERS: { id: LLMProvider; name: string; models: { id: string; name: string }[] }[] = [
+// Provider configurations
+const TRANSCRIPTION_PROVIDERS: {
+  id: TranscriptionProvider;
+  name: string;
+  description: string;
+  icon: React.ReactNode;
+  requiresKey: boolean;
+  keyName: string | null;
+  models: { id: string; name: string; description: string }[];
+}[] = [
   {
     id: 'groq',
     name: 'Groq',
+    description: 'Ultra-fast cloud inference',
+    icon: <Zap size={20} />,
+    requiresKey: true,
+    keyName: 'groq',
     models: [
-      { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B' },
-      { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant' },
+      { id: 'whisper-large-v3-turbo', name: 'Whisper Large V3 Turbo', description: 'Best speed/accuracy' },
+      { id: 'whisper-large-v3', name: 'Whisper Large V3', description: 'Highest accuracy' },
+      { id: 'distil-whisper-large-v3-en', name: 'Distil Whisper V3', description: 'English optimized' },
     ],
   },
   {
     id: 'openai',
     name: 'OpenAI',
+    description: 'Industry standard Whisper',
+    icon: <Bot size={20} />,
+    requiresKey: true,
+    keyName: 'openai',
     models: [
-      { id: 'gpt-4o', name: 'GPT-4o' },
-      { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
+      { id: 'gpt-4o-transcribe', name: 'GPT-4o Transcribe', description: 'Best accuracy' },
+      { id: 'gpt-4o-mini-transcribe', name: 'GPT-4o Mini Transcribe', description: 'Fast & affordable' },
+      { id: 'whisper-1', name: 'Whisper-1', description: 'Classic model' },
+    ],
+  },
+  {
+    id: 'whisper-local',
+    name: 'Local',
+    description: 'Privacy-first, runs on device',
+    icon: <Monitor size={20} />,
+    requiresKey: false,
+    keyName: null,
+    models: [
+      { id: 'large-v3-turbo', name: 'Large V3 Turbo', description: '1.6GB - Best' },
+      { id: 'medium', name: 'Medium', description: '1.5GB - High accuracy' },
+      { id: 'small', name: 'Small', description: '466MB - Balanced' },
+      { id: 'base', name: 'Base', description: '142MB - Faster' },
+      { id: 'tiny', name: 'Tiny', description: '75MB - Fastest' },
+    ],
+  },
+];
+
+const LLM_PROVIDERS: {
+  id: LLMProvider;
+  name: string;
+  description: string;
+  icon: React.ReactNode;
+  requiresKey: boolean;
+  keyName: string | null;
+  models: { id: string; name: string; description: string }[];
+}[] = [
+  {
+    id: 'groq',
+    name: 'Groq',
+    description: 'Ultra-fast inference',
+    icon: <Zap size={20} />,
+    requiresKey: true,
+    keyName: 'groq',
+    models: [
+      { id: 'meta-llama/llama-4-scout-17b-16e-instruct', name: 'Llama 4 Scout', description: 'Latest Llama model' },
+      { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B', description: 'Best quality' },
+      { id: 'qwen/qwen3-32b', name: 'Qwen3 32B', description: 'Strong reasoning' },
+    ],
+  },
+  {
+    id: 'openai',
+    name: 'OpenAI',
+    description: 'GPT-5 models',
+    icon: <Bot size={20} />,
+    requiresKey: true,
+    keyName: 'openai',
+    models: [
+      { id: 'gpt-5.2', name: 'GPT-5.2 Thinking', description: 'Best quality' },
+      { id: 'gpt-5.2-chat-latest', name: 'GPT-5.2 Instant', description: 'Fast daily use' },
+      { id: 'gpt-5-mini', name: 'GPT-5 Mini', description: 'Affordable' },
+      { id: 'gpt-5-nano', name: 'GPT-5 Nano', description: 'Budget' },
     ],
   },
   {
     id: 'anthropic',
     name: 'Anthropic',
+    description: 'Claude models',
+    icon: <Brain size={20} />,
+    requiresKey: true,
+    keyName: 'anthropic',
     models: [
-      { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
-      { id: 'claude-haiku-3-5-20241022', name: 'Claude Haiku 3.5' },
+      { id: 'claude-sonnet-4-5-20250929', name: 'Claude Sonnet 4.5', description: 'Best balance' },
+      { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5', description: 'Fast & efficient' },
+      { id: 'claude-opus-4-5-20251101', name: 'Claude Opus 4.5', description: 'Most intelligent' },
     ],
   },
   {
     id: 'gemini',
     name: 'Google Gemini',
+    description: 'Gemini models',
+    icon: <Sparkles size={20} />,
+    requiresKey: true,
+    keyName: 'gemini',
     models: [
-      { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
-      { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
+      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Fast & capable' },
+      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: 'Most capable' },
+      { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite', description: 'Budget option' },
     ],
   },
   {
     id: 'ollama',
-    name: 'Ollama (Local)',
+    name: 'Ollama',
+    description: 'Local models',
+    icon: <Monitor size={20} />,
+    requiresKey: false,
+    keyName: null,
     models: [
-      { id: 'llama3.2', name: 'Llama 3.2' },
-      { id: 'mistral', name: 'Mistral' },
-      { id: 'phi3', name: 'Phi-3' },
+      { id: 'llama4', name: 'Llama 4', description: 'Latest Llama' },
+      { id: 'deepseek-r1:14b', name: 'DeepSeek R1 14B', description: 'Reasoning model' },
+      { id: 'qwen2.5:14b', name: 'Qwen 2.5 14B', description: 'Strong all-around' },
+      { id: 'mistral', name: 'Mistral', description: 'Fast & capable' },
     ],
   },
 ];
 
-const PROCESSING_MODES: { id: ProcessingMode; name: string; description: string }[] = [
-  { id: 'raw', name: 'Raw', description: 'No AI processing, just transcription' },
-  { id: 'clean', name: 'Clean', description: 'Remove filler words, add punctuation' },
-  { id: 'polish', name: 'Polish', description: 'Full rewrite for clarity and grammar' },
+const PROCESSING_MODES: { id: ProcessingMode; name: string; description: string; icon: React.ReactNode }[] = [
+  { id: 'raw', name: 'Raw', description: 'No processing - just transcription', icon: <FileText size={24} /> },
+  { id: 'clean', name: 'Clean', description: 'Remove filler words, add punctuation', icon: <Sparkles size={24} /> },
+  { id: 'polish', name: 'Polish', description: 'Full rewrite for clarity', icon: <Gem size={24} /> },
 ];
 
-type Tab = 'api-keys' | 'transcription' | 'processing' | 'hotkeys' | 'audio';
+type Section = 'transcription' | 'ai' | 'hotkeys' | 'audio';
 
 interface AudioDevice {
   deviceId: string;
   label: string;
 }
 
+// Step indicator component
+function StepIndicator({ number, title, completed, active }: { number: number; title: string; completed: boolean; active: boolean }) {
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px',
+      marginBottom: '20px',
+    }}>
+      <div style={{
+        width: '32px',
+        height: '32px',
+        borderRadius: '50%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '14px',
+        fontWeight: 600,
+        backgroundColor: completed ? theme.success : active ? theme.primary : theme.bgHover,
+        color: completed || active ? '#fff' : theme.textMuted,
+        transition: 'all 0.2s',
+      }}>
+        {completed ? <Check size={16} /> : number}
+      </div>
+      <span style={{
+        fontSize: '15px',
+        fontWeight: 500,
+        color: active ? theme.text : theme.textMuted,
+      }}>
+        {title}
+      </span>
+    </div>
+  );
+}
+
+// Provider card component
+function ProviderCard({
+  provider,
+  selected,
+  onClick,
+  hasKey,
+}: {
+  provider: { id: string; name: string; description: string; icon: React.ReactNode; requiresKey: boolean };
+  selected: boolean;
+  onClick: () => void;
+  hasKey: boolean;
+}) {
+  const needsKey = provider.requiresKey && !hasKey;
+
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        padding: '16px',
+        backgroundColor: selected ? theme.bgSelected : theme.bgCard,
+        border: `2px solid ${selected ? theme.primary : theme.border}`,
+        borderRadius: '12px',
+        cursor: 'pointer',
+        transition: 'all 0.15s',
+        textAlign: 'left',
+        width: '100%',
+      }}
+    >
+      <span style={{ color: theme.primary }}>{provider.icon}</span>
+      <div style={{ flex: 1 }}>
+        <div style={{
+          fontSize: '15px',
+          fontWeight: 600,
+          color: theme.text,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+        }}>
+          {provider.name}
+          {selected && <span style={{ color: theme.primary, fontSize: '12px' }}>Selected</span>}
+        </div>
+        <div style={{ fontSize: '13px', color: theme.textMuted, marginTop: '2px' }}>
+          {provider.description}
+        </div>
+      </div>
+      {needsKey && (
+        <span style={{
+          fontSize: '11px',
+          padding: '4px 8px',
+          backgroundColor: theme.warning + '20',
+          color: theme.warning,
+          borderRadius: '4px',
+          fontWeight: 500,
+        }}>
+          Needs API Key
+        </span>
+      )}
+    </button>
+  );
+}
+
+// Model card component
+function ModelCard({
+  model,
+  selected,
+  onClick
+}: {
+  model: { id: string; name: string; description: string };
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '14px 16px',
+        backgroundColor: selected ? theme.bgSelected : theme.bgCard,
+        border: `2px solid ${selected ? theme.primary : theme.border}`,
+        borderRadius: '10px',
+        cursor: 'pointer',
+        transition: 'all 0.15s',
+        width: '100%',
+      }}
+    >
+      <div style={{ textAlign: 'left' }}>
+        <div style={{ fontSize: '14px', fontWeight: 500, color: theme.text }}>
+          {model.name}
+        </div>
+        <div style={{ fontSize: '12px', color: theme.textMuted, marginTop: '2px' }}>
+          {model.description}
+        </div>
+      </div>
+      {selected && (
+        <div style={{
+          width: '20px',
+          height: '20px',
+          borderRadius: '50%',
+          backgroundColor: theme.primary,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#fff',
+        }}>
+          <Check size={12} />
+        </div>
+      )}
+    </button>
+  );
+}
+
+// Mode card component
+function ModeCard({
+  mode,
+  selected,
+  onClick
+}: {
+  mode: { id: string; name: string; description: string; icon: React.ReactNode };
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        padding: '20px 16px',
+        backgroundColor: selected ? theme.bgSelected : theme.bgCard,
+        border: `2px solid ${selected ? theme.primary : theme.border}`,
+        borderRadius: '12px',
+        cursor: 'pointer',
+        transition: 'all 0.15s',
+      }}
+    >
+      <span style={{ color: theme.primary, marginBottom: '8px' }}>{mode.icon}</span>
+      <div style={{ fontSize: '15px', fontWeight: 600, color: theme.text }}>
+        {mode.name}
+      </div>
+      <div style={{ fontSize: '12px', color: theme.textMuted, marginTop: '4px', textAlign: 'center' }}>
+        {mode.description}
+      </div>
+    </button>
+  );
+}
+
+// API Key input component
+function ApiKeyInput({
+  value,
+  onChange,
+  placeholder,
+  providerName,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  providerName: string;
+}) {
+  const [show, setShow] = useState(false);
+  const hasValue = value && value.length > 0;
+
+  return (
+    <div style={{ marginTop: '16px' }}>
+      <label style={{
+        display: 'block',
+        fontSize: '13px',
+        fontWeight: 500,
+        color: theme.textMuted,
+        marginBottom: '8px',
+      }}>
+        {providerName} API Key
+      </label>
+      <div style={{ position: 'relative' }}>
+        <input
+          type={show ? 'text' : 'password'}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          style={{
+            width: '100%',
+            padding: '12px 48px 12px 14px',
+            backgroundColor: theme.bgHover,
+            border: `1px solid ${hasValue ? theme.success : theme.border}`,
+            borderRadius: '8px',
+            color: theme.text,
+            fontSize: '14px',
+            outline: 'none',
+            boxSizing: 'border-box',
+            transition: 'border-color 0.15s',
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => setShow(!show)}
+          style={{
+            position: 'absolute',
+            right: '12px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            background: 'none',
+            border: 'none',
+            color: theme.textMuted,
+            cursor: 'pointer',
+            fontSize: '14px',
+            padding: '4px',
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >
+          {show ? <EyeOff size={16} /> : <Eye size={16} />}
+        </button>
+      </div>
+      {hasValue && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          marginTop: '8px',
+          fontSize: '12px',
+          color: theme.success,
+        }}>
+          <Check size={14} /> API key saved
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Section card wrapper
+function SectionCard({ title, children, step }: { title?: string; children: React.ReactNode; step?: number }) {
+  return (
+    <div style={{
+      backgroundColor: theme.bgCard,
+      borderRadius: '16px',
+      padding: '24px',
+      marginBottom: '20px',
+      border: `1px solid ${theme.border}`,
+    }}>
+      {(title || step) && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          marginBottom: '20px',
+        }}>
+          {step && (
+            <div style={{
+              width: '28px',
+              height: '28px',
+              borderRadius: '50%',
+              backgroundColor: theme.primary,
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '14px',
+              fontWeight: 600,
+            }}>
+              {step}
+            </div>
+          )}
+          {title && (
+            <h3 style={{
+              fontSize: '16px',
+              fontWeight: 600,
+              color: theme.text,
+              margin: 0,
+            }}>
+              {title}
+            </h3>
+          )}
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
+
+// Nav item component
+function NavItem({
+  icon,
+  label,
+  active,
+  onClick,
+  badge,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  badge?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        width: '100%',
+        padding: '12px 16px',
+        backgroundColor: active ? theme.bgSelected : 'transparent',
+        border: 'none',
+        borderRadius: '10px',
+        cursor: 'pointer',
+        transition: 'all 0.15s',
+        textAlign: 'left',
+      }}
+    >
+      <span style={{ color: active ? theme.primary : theme.textMuted }}>{icon}</span>
+      <span style={{
+        flex: 1,
+        fontSize: '14px',
+        fontWeight: 500,
+        color: active ? theme.text : theme.textMuted,
+      }}>
+        {label}
+      </span>
+      {badge && (
+        <span style={{
+          fontSize: '11px',
+          padding: '2px 8px',
+          backgroundColor: theme.primary,
+          color: '#fff',
+          borderRadius: '10px',
+          fontWeight: 500,
+        }}>
+          {badge}
+        </span>
+      )}
+    </button>
+  );
+}
+
 export function Settings() {
-  const [activeTab, setActiveTab] = useState<Tab>('api-keys');
+  const [activeSection, setActiveSection] = useState<Section>('transcription');
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  const [recordingHotkey, setRecordingHotkey] = useState(false);
+  const [recordingHotkey, setRecordingHotkey] = useState<string | null>(null);
   const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<string>('default');
+  const [micTesting, setMicTesting] = useState(false);
+  const [micLevel, setMicLevel] = useState(0);
+  const micStreamRef = React.useRef<MediaStream | null>(null);
+  const micAnalyserRef = React.useRef<AnalyserNode | null>(null);
+  const micAnimationRef = React.useRef<number | null>(null);
 
   useEffect(() => {
     loadSettings();
     loadAudioDevices();
+    return () => {
+      // Cleanup mic test on unmount
+      stopMicTest();
+    };
   }, []);
 
   const loadAudioDevices = async () => {
@@ -294,6 +595,69 @@ export function Settings() {
       setAudioDevices(audioInputs);
     } catch (err) {
       console.error('Failed to load audio devices:', err);
+    }
+  };
+
+  const startMicTest = async () => {
+    try {
+      const constraints: MediaStreamConstraints = {
+        audio: selectedDevice === 'default'
+          ? true
+          : { deviceId: { exact: selectedDevice } }
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      micStreamRef.current = stream;
+
+      const audioContext = new AudioContext();
+      const source = audioContext.createMediaStreamSource(stream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      micAnalyserRef.current = analyser;
+
+      setMicTesting(true);
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+      const updateLevel = () => {
+        if (!micAnalyserRef.current) return;
+
+        micAnalyserRef.current.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+        const normalized = Math.min(100, (average / 128) * 100);
+        setMicLevel(normalized);
+
+        micAnimationRef.current = requestAnimationFrame(updateLevel);
+      };
+
+      updateLevel();
+    } catch (err) {
+      console.error('Failed to access microphone:', err);
+    }
+  };
+
+  const stopMicTest = () => {
+    if (micAnimationRef.current) {
+      cancelAnimationFrame(micAnimationRef.current);
+      micAnimationRef.current = null;
+    }
+
+    if (micStreamRef.current) {
+      micStreamRef.current.getTracks().forEach(track => track.stop());
+      micStreamRef.current = null;
+    }
+
+    micAnalyserRef.current = null;
+    setMicTesting(false);
+    setMicLevel(0);
+  };
+
+  const toggleMicTest = () => {
+    if (micTesting) {
+      stopMicTest();
+    } else {
+      startMicTest();
     }
   };
 
@@ -314,19 +678,20 @@ export function Settings() {
       const updated = await window.murmur.setSettings(updates);
       setSettings(updated);
       setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      setTimeout(() => setSaved(false), 1500);
     } catch (err) {
       console.error('Save failed:', err);
     }
   }, [settings]);
 
-  const updateApiKey = (provider: string, value: string) => {
+  const updateApiKey = useCallback((provider: string, value: string) => {
     if (!settings) return;
     save({ apiKeys: { ...settings.apiKeys, [provider]: value } });
-  };
+  }, [settings, save]);
 
+  // Hotkey capture handler
   const handleHotkeyCapture = useCallback((e: KeyboardEvent) => {
-    if (!recordingHotkey) return;
+    if (!recordingHotkey || !settings) return;
     e.preventDefault();
 
     const parts: string[] = [];
@@ -336,14 +701,19 @@ export function Settings() {
 
     let key = e.key;
     if (key === ' ') key = 'Space';
+    else if (key === '`') key = 'Backquote';
     else if (key.length === 1) key = key.toUpperCase();
     else if (['Control', 'Alt', 'Shift', 'Meta'].includes(key)) return;
 
     parts.push(key);
     const hotkey = parts.join('+');
 
-    save({ hotkeys: { ...settings!.hotkeys, toggleRecording: hotkey } });
-    setRecordingHotkey(false);
+    if (recordingHotkey === 'pushToTalk') {
+      save({ hotkeys: { ...settings.hotkeys, pushToTalkKey: hotkey } });
+    } else if (recordingHotkey === 'toggle') {
+      save({ hotkeys: { ...settings.hotkeys, toggleKey: hotkey } });
+    }
+    setRecordingHotkey(null);
   }, [recordingHotkey, settings, save]);
 
   useEffect(() => {
@@ -355,18 +725,51 @@ export function Settings() {
 
   if (loading) {
     return (
-      <div style={{ ...baseStyles.app, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div>Loading...</div>
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: theme.bg,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: theme.text,
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ marginBottom: '16px', color: theme.primary }}>
+            <Loader2 size={32} style={{ animation: 'spin 1s linear infinite' }} />
+          </div>
+          <div style={{ fontSize: '16px', color: theme.textMuted }}>Loading Murmur...</div>
+        </div>
       </div>
     );
   }
 
   if (error || !settings) {
     return (
-      <div style={{ ...baseStyles.app, padding: '40px' }}>
-        <h1>Error</h1>
-        <p style={{ color: theme.error }}>{error || 'Failed to load settings'}</p>
-        <button style={baseStyles.button} onClick={loadSettings}>Retry</button>
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: theme.bg,
+        padding: '40px',
+        color: theme.text,
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      }}>
+        <h1 style={{ marginBottom: '16px' }}>Unable to Load Settings</h1>
+        <p style={{ color: theme.error, marginBottom: '24px' }}>{error || 'An unknown error occurred'}</p>
+        <button
+          onClick={loadSettings}
+          style={{
+            padding: '12px 24px',
+            backgroundColor: theme.primary,
+            border: 'none',
+            borderRadius: '8px',
+            color: '#fff',
+            fontSize: '14px',
+            fontWeight: 500,
+            cursor: 'pointer',
+          }}
+        >
+          Try Again
+        </button>
       </div>
     );
   }
@@ -375,144 +778,162 @@ export function Settings() {
   const currentLLMProvider = LLM_PROVIDERS.find(p => p.id === settings.llmProvider);
 
   return (
-    <div style={baseStyles.app}>
-      <header style={baseStyles.header}>
-        <h1 style={baseStyles.headerTitle}>Murmur Settings</h1>
-      </header>
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: theme.bg,
+      color: theme.text,
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      display: 'flex',
+    }}>
+      {/* Sidebar */}
+      <aside style={{
+        width: '240px',
+        borderRight: `1px solid ${theme.border}`,
+        padding: '24px 16px',
+        display: 'flex',
+        flexDirection: 'column',
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          padding: '0 16px',
+          marginBottom: '32px',
+        }}>
+          <span style={{ color: theme.primary }}><Mic size={28} /></span>
+          <div>
+            <div style={{ fontSize: '18px', fontWeight: 700, color: theme.text }}>Murmur</div>
+            <div style={{ fontSize: '12px', color: theme.textDim }}>Settings</div>
+          </div>
+        </div>
 
-      <nav style={baseStyles.nav}>
-        {(['api-keys', 'transcription', 'processing', 'hotkeys', 'audio'] as Tab[]).map(tab => (
-          <button
-            key={tab}
-            style={{
-              ...baseStyles.navButton,
-              ...(activeTab === tab ? baseStyles.navButtonActive : {}),
-            }}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab === 'api-keys' ? 'API Keys' :
-             tab === 'transcription' ? 'Transcription' :
-             tab === 'processing' ? 'AI Processing' :
-             tab === 'hotkeys' ? 'Hotkeys' : 'Audio'}
-          </button>
-        ))}
-      </nav>
+        <nav style={{ flex: 1 }}>
+          <NavItem
+            icon={<Mic size={18} />}
+            label="Transcription"
+            active={activeSection === 'transcription'}
+            onClick={() => setActiveSection('transcription')}
+          />
+          <NavItem
+            icon={<Bot size={18} />}
+            label="AI Processing"
+            active={activeSection === 'ai'}
+            onClick={() => setActiveSection('ai')}
+          />
+          <NavItem
+            icon={<Keyboard size={18} />}
+            label="Hotkeys"
+            active={activeSection === 'hotkeys'}
+            onClick={() => setActiveSection('hotkeys')}
+          />
+          <NavItem
+            icon={<Volume2 size={18} />}
+            label="Audio"
+            active={activeSection === 'audio'}
+            onClick={() => setActiveSection('audio')}
+          />
+        </nav>
 
-      <main style={baseStyles.content}>
-        {/* API Keys Tab */}
-        {activeTab === 'api-keys' && (
-          <>
-            <div style={baseStyles.section}>
-              <h3 style={baseStyles.sectionTitle}>Groq</h3>
-              <p style={{ ...baseStyles.description, marginBottom: '12px' }}>Fast inference for Whisper and LLMs</p>
-              <div style={baseStyles.field}>
-                <label style={baseStyles.label}>API Key</label>
-                <input
-                  type="password"
-                  style={baseStyles.input}
-                  value={settings.apiKeys.groq || ''}
-                  onChange={e => updateApiKey('groq', e.target.value)}
-                  placeholder="gsk_..."
-                />
+        <div style={{
+          padding: '16px',
+          backgroundColor: theme.bgCard,
+          borderRadius: '12px',
+          marginTop: 'auto',
+        }}>
+          <div style={{ fontSize: '13px', color: theme.textMuted, marginBottom: '8px' }}>
+            Quick Start
+          </div>
+          <div style={{ fontSize: '12px', color: theme.textDim, lineHeight: 1.5 }}>
+            Press <code style={{
+              backgroundColor: theme.bgHover,
+              padding: '2px 6px',
+              borderRadius: '4px',
+              fontFamily: 'monospace',
+            }}>{settings.hotkeys.pushToTalkKey}</code> to start recording
+          </div>
+        </div>
+      </aside>
+
+      {/* Main content */}
+      <main style={{
+        flex: 1,
+        padding: '32px',
+        overflowY: 'auto',
+        maxHeight: '100vh',
+      }}>
+        <div style={{ maxWidth: '720px' }}>
+          {/* Transcription Section */}
+          {activeSection === 'transcription' && (
+            <>
+              <div style={{ marginBottom: '32px' }}>
+                <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>Transcription</h1>
+                <p style={{ fontSize: '14px', color: theme.textMuted, marginTop: '8px' }}>
+                  Configure how your voice is converted to text
+                </p>
               </div>
-            </div>
 
-            <div style={baseStyles.section}>
-              <h3 style={baseStyles.sectionTitle}>OpenAI</h3>
-              <p style={{ ...baseStyles.description, marginBottom: '12px' }}>GPT models and Whisper transcription</p>
-              <div style={baseStyles.field}>
-                <label style={baseStyles.label}>API Key</label>
-                <input
-                  type="password"
-                  style={baseStyles.input}
-                  value={settings.apiKeys.openai || ''}
-                  onChange={e => updateApiKey('openai', e.target.value)}
-                  placeholder="sk-..."
-                />
-              </div>
-            </div>
-
-            <div style={baseStyles.section}>
-              <h3 style={baseStyles.sectionTitle}>Anthropic</h3>
-              <p style={{ ...baseStyles.description, marginBottom: '12px' }}>Claude models for text processing</p>
-              <div style={baseStyles.field}>
-                <label style={baseStyles.label}>API Key</label>
-                <input
-                  type="password"
-                  style={baseStyles.input}
-                  value={settings.apiKeys.anthropic || ''}
-                  onChange={e => updateApiKey('anthropic', e.target.value)}
-                  placeholder="sk-ant-..."
-                />
-              </div>
-            </div>
-
-            <div style={baseStyles.section}>
-              <h3 style={baseStyles.sectionTitle}>Google Gemini</h3>
-              <p style={{ ...baseStyles.description, marginBottom: '12px' }}>Gemini models for text processing</p>
-              <div style={baseStyles.field}>
-                <label style={baseStyles.label}>API Key</label>
-                <input
-                  type="password"
-                  style={baseStyles.input}
-                  value={settings.apiKeys.gemini || ''}
-                  onChange={e => updateApiKey('gemini', e.target.value)}
-                  placeholder="AIza..."
-                />
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Transcription Tab */}
-        {activeTab === 'transcription' && (
-          <>
-            <div style={baseStyles.section}>
-              <h3 style={baseStyles.sectionTitle}>Transcription Provider</h3>
-              <div style={baseStyles.grid}>
-                {TRANSCRIPTION_PROVIDERS.map(provider => (
-                  <button
-                    key={provider.id}
-                    style={{
-                      ...baseStyles.modeButton,
-                      ...(settings.transcriptionProvider === provider.id ? baseStyles.modeButtonActive : {}),
-                    }}
-                    onClick={() => {
-                      const defaultModel = provider.models[0]?.id || '';
-                      save({ transcriptionProvider: provider.id, transcriptionModel: defaultModel });
-                    }}
-                  >
-                    <div style={{ fontWeight: 600 }}>{provider.name}</div>
-                    <div style={baseStyles.description}>{provider.models.length} models available</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {currentTranscriptionProvider && (
-              <div style={baseStyles.section}>
-                <h3 style={baseStyles.sectionTitle}>Transcription Model</h3>
-                <div style={baseStyles.field}>
-                  <select
-                    style={baseStyles.select}
-                    value={settings.transcriptionModel}
-                    onChange={e => save({ transcriptionModel: e.target.value })}
-                  >
-                    {currentTranscriptionProvider.models.map(model => (
-                      <option key={model.id} value={model.id}>{model.name}</option>
-                    ))}
-                  </select>
+              <SectionCard title="Select Provider" step={1}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {TRANSCRIPTION_PROVIDERS.map(provider => (
+                    <ProviderCard
+                      key={provider.id}
+                      provider={provider}
+                      selected={settings.transcriptionProvider === provider.id}
+                      hasKey={!provider.requiresKey || !!(settings.apiKeys as any)[provider.keyName!]}
+                      onClick={() => {
+                        const defaultModel = provider.models[0]?.id || '';
+                        save({ transcriptionProvider: provider.id, transcriptionModel: defaultModel });
+                      }}
+                    />
+                  ))}
                 </div>
-              </div>
-            )}
+              </SectionCard>
 
-            <div style={baseStyles.section}>
-              <h3 style={baseStyles.sectionTitle}>Language</h3>
-              <div style={baseStyles.field}>
+              {currentTranscriptionProvider?.requiresKey && (
+                <SectionCard title="Enter API Key" step={2}>
+                  <p style={{ fontSize: '13px', color: theme.textMuted, marginBottom: '12px' }}>
+                    Get your API key from{' '}
+                    <span style={{ color: theme.primary }}>
+                      {currentTranscriptionProvider.id === 'groq' ? 'console.groq.com' : 'platform.openai.com'}
+                    </span>
+                  </p>
+                  <ApiKeyInput
+                    value={(settings.apiKeys as any)[currentTranscriptionProvider.keyName!] || ''}
+                    onChange={(value) => updateApiKey(currentTranscriptionProvider.keyName!, value)}
+                    placeholder={currentTranscriptionProvider.id === 'groq' ? 'gsk_...' : 'sk-...'}
+                    providerName={currentTranscriptionProvider.name}
+                  />
+                </SectionCard>
+              )}
+
+              <SectionCard title="Select Model" step={currentTranscriptionProvider?.requiresKey ? 3 : 2}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {currentTranscriptionProvider?.models.map(model => (
+                    <ModelCard
+                      key={model.id}
+                      model={model}
+                      selected={settings.transcriptionModel === model.id}
+                      onClick={() => save({ transcriptionModel: model.id })}
+                    />
+                  ))}
+                </div>
+              </SectionCard>
+
+              <SectionCard title="Language" step={currentTranscriptionProvider?.requiresKey ? 4 : 3}>
                 <select
-                  style={baseStyles.select}
                   value={settings.language}
                   onChange={e => save({ language: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    backgroundColor: theme.bgHover,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: '8px',
+                    color: theme.text,
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    outline: 'none',
+                  }}
                 >
                   <option value="auto">Auto-detect</option>
                   <option value="en">English</option>
@@ -525,153 +946,242 @@ export function Settings() {
                   <option value="ja">Japanese</option>
                   <option value="ko">Korean</option>
                 </select>
-              </div>
-            </div>
-          </>
-        )}
+              </SectionCard>
+            </>
+          )}
 
-        {/* AI Processing Tab */}
-        {activeTab === 'processing' && (
-          <>
-            <div style={baseStyles.section}>
-              <h3 style={baseStyles.sectionTitle}>Processing Mode</h3>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                {PROCESSING_MODES.map(mode => (
-                  <button
-                    key={mode.id}
-                    style={{
-                      ...baseStyles.modeButton,
-                      ...(settings.processingMode === mode.id ? baseStyles.modeButtonActive : {}),
-                    }}
-                    onClick={() => save({ processingMode: mode.id })}
-                  >
-                    <div style={{ fontWeight: 600 }}>{mode.name}</div>
-                    <div style={baseStyles.description}>{mode.description}</div>
-                  </button>
-                ))}
+          {/* AI Processing Section */}
+          {activeSection === 'ai' && (
+            <>
+              <div style={{ marginBottom: '32px' }}>
+                <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>AI Processing</h1>
+                <p style={{ fontSize: '14px', color: theme.textMuted, marginTop: '8px' }}>
+                  Enhance your transcriptions with AI
+                </p>
               </div>
-            </div>
 
-            {settings.processingMode !== 'raw' && (
-              <>
-                <div style={baseStyles.section}>
-                  <h3 style={baseStyles.sectionTitle}>LLM Provider</h3>
-                  <div style={baseStyles.grid}>
-                    {LLM_PROVIDERS.map(provider => (
-                      <button
-                        key={provider.id}
-                        style={{
-                          ...baseStyles.modeButton,
-                          ...(settings.llmProvider === provider.id ? baseStyles.modeButtonActive : {}),
-                        }}
-                        onClick={() => {
-                          const defaultModel = provider.models[0]?.id || '';
-                          save({ llmProvider: provider.id, llmModel: defaultModel });
-                        }}
-                      >
-                        <div style={{ fontWeight: 600 }}>{provider.name}</div>
-                        <div style={baseStyles.description}>{provider.models.length} models</div>
-                      </button>
-                    ))}
-                  </div>
+              <SectionCard title="Select Mode" step={1}>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  {PROCESSING_MODES.map(mode => (
+                    <ModeCard
+                      key={mode.id}
+                      mode={mode}
+                      selected={settings.processingMode === mode.id}
+                      onClick={() => save({ processingMode: mode.id })}
+                    />
+                  ))}
                 </div>
+              </SectionCard>
 
-                {currentLLMProvider && (
-                  <div style={baseStyles.section}>
-                    <h3 style={baseStyles.sectionTitle}>LLM Model</h3>
-                    <div style={baseStyles.field}>
-                      <select
-                        style={baseStyles.select}
-                        value={settings.llmModel}
-                        onChange={e => save({ llmModel: e.target.value })}
-                      >
-                        {currentLLMProvider.models.map(model => (
-                          <option key={model.id} value={model.id}>{model.name}</option>
-                        ))}
-                      </select>
+              {settings.processingMode !== 'raw' && (
+                <>
+                  <SectionCard title="Select Provider" step={2}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {LLM_PROVIDERS.map(provider => (
+                        <ProviderCard
+                          key={provider.id}
+                          provider={provider}
+                          selected={settings.llmProvider === provider.id}
+                          hasKey={!provider.requiresKey || !!(settings.apiKeys as any)[provider.keyName!]}
+                          onClick={() => {
+                            const defaultModel = provider.models[0]?.id || '';
+                            save({ llmProvider: provider.id, llmModel: defaultModel });
+                          }}
+                        />
+                      ))}
                     </div>
-                  </div>
-                )}
-              </>
-            )}
-          </>
-        )}
+                  </SectionCard>
 
-        {/* Hotkeys Tab */}
-        {activeTab === 'hotkeys' && (
-          <>
-            <div style={baseStyles.section}>
-              <h3 style={baseStyles.sectionTitle}>Activation Mode</h3>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <button
-                  style={{
-                    ...baseStyles.modeButton,
-                    ...(settings.hotkeys.activationMode === 'push-to-talk' ? baseStyles.modeButtonActive : {}),
-                  }}
-                  onClick={() => save({ hotkeys: { ...settings.hotkeys, activationMode: 'push-to-talk' } })}
-                >
-                  <div style={{ fontWeight: 600 }}>Push to Talk</div>
-                  <div style={baseStyles.description}>Hold hotkey to record, release to stop</div>
-                </button>
-                <button
-                  style={{
-                    ...baseStyles.modeButton,
-                    ...(settings.hotkeys.activationMode === 'toggle' ? baseStyles.modeButtonActive : {}),
-                  }}
-                  onClick={() => save({ hotkeys: { ...settings.hotkeys, activationMode: 'toggle' } })}
-                >
-                  <div style={{ fontWeight: 600 }}>Toggle</div>
-                  <div style={baseStyles.description}>Press once to start, press again to stop</div>
-                </button>
-              </div>
-            </div>
+                  {currentLLMProvider?.requiresKey && (
+                    <SectionCard title="Enter API Key" step={3}>
+                      <p style={{ fontSize: '13px', color: theme.textMuted, marginBottom: '12px' }}>
+                        Get your API key from the provider's console
+                      </p>
+                      <ApiKeyInput
+                        value={(settings.apiKeys as any)[currentLLMProvider.keyName!] || ''}
+                        onChange={(value) => updateApiKey(currentLLMProvider.keyName!, value)}
+                        placeholder={
+                          currentLLMProvider.id === 'groq' ? 'gsk_...' :
+                          currentLLMProvider.id === 'openai' ? 'sk-...' :
+                          currentLLMProvider.id === 'anthropic' ? 'sk-ant-...' :
+                          'API key...'
+                        }
+                        providerName={currentLLMProvider.name}
+                      />
+                    </SectionCard>
+                  )}
 
-            <div style={baseStyles.section}>
-              <h3 style={baseStyles.sectionTitle}>Recording Hotkey</h3>
-              <p style={{ ...baseStyles.description, marginBottom: '12px' }}>
-                Click the box below and press your desired key combination
-              </p>
-              <div
-                style={{
-                  ...baseStyles.hotkeyDisplay,
-                  borderColor: recordingHotkey ? theme.primary : theme.border,
-                }}
-                onClick={() => setRecordingHotkey(true)}
-              >
-                {recordingHotkey ? 'Press any key combination...' : settings.hotkeys.toggleRecording}
-              </div>
-              {recordingHotkey && (
-                <button
-                  style={{ ...baseStyles.buttonSecondary, marginTop: '12px' }}
-                  onClick={() => setRecordingHotkey(false)}
-                >
-                  Cancel
-                </button>
+                  <SectionCard title="Select Model" step={currentLLMProvider?.requiresKey ? 4 : 3}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {currentLLMProvider?.models.map(model => (
+                        <ModelCard
+                          key={model.id}
+                          model={model}
+                          selected={settings.llmModel === model.id}
+                          onClick={() => save({ llmModel: model.id })}
+                        />
+                      ))}
+                    </div>
+                  </SectionCard>
+                </>
               )}
-            </div>
+            </>
+          )}
 
-            <div style={baseStyles.section}>
-              <h3 style={baseStyles.sectionTitle}>Cancel Recording</h3>
-              <p style={baseStyles.description}>
-                Press <code style={{ backgroundColor: theme.bgTertiary, padding: '2px 6px', borderRadius: '4px' }}>Escape</code> at any time to cancel the current recording
-              </p>
-            </div>
-          </>
-        )}
+          {/* Hotkeys Section */}
+          {activeSection === 'hotkeys' && (
+            <>
+              <div style={{ marginBottom: '32px' }}>
+                <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>Hotkeys</h1>
+                <p style={{ fontSize: '14px', color: theme.textMuted, marginTop: '8px' }}>
+                  Configure keyboard shortcuts for recording
+                </p>
+              </div>
 
-        {/* Audio Tab */}
-        {activeTab === 'audio' && (
-          <>
-            <div style={baseStyles.section}>
-              <h3 style={baseStyles.sectionTitle}>Microphone</h3>
-              <p style={{ ...baseStyles.description, marginBottom: '12px' }}>
-                Select the microphone to use for voice recording
-              </p>
-              <div style={baseStyles.field}>
+              <SectionCard title="Activation Mode" step={1}>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button
+                    onClick={() => save({ hotkeys: { ...settings.hotkeys, activationMode: 'push-to-talk' } })}
+                    style={{
+                      flex: 1,
+                      padding: '20px',
+                      backgroundColor: settings.hotkeys.activationMode === 'push-to-talk' ? theme.bgSelected : theme.bgCard,
+                      border: `2px solid ${settings.hotkeys.activationMode === 'push-to-talk' ? theme.primary : theme.border}`,
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <div style={{ marginBottom: '8px', color: theme.primary }}><Target size={24} /></div>
+                    <div style={{ fontSize: '15px', fontWeight: 600, color: theme.text }}>Push to Talk</div>
+                    <div style={{ fontSize: '12px', color: theme.textMuted, marginTop: '4px' }}>
+                      Hold key to record, release to stop
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => save({ hotkeys: { ...settings.hotkeys, activationMode: 'toggle' } })}
+                    style={{
+                      flex: 1,
+                      padding: '20px',
+                      backgroundColor: settings.hotkeys.activationMode === 'toggle' ? theme.bgSelected : theme.bgCard,
+                      border: `2px solid ${settings.hotkeys.activationMode === 'toggle' ? theme.primary : theme.border}`,
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <div style={{ marginBottom: '8px', color: theme.primary }}><RefreshCw size={24} /></div>
+                    <div style={{ fontSize: '15px', fontWeight: 600, color: theme.text }}>Toggle</div>
+                    <div style={{ fontSize: '12px', color: theme.textMuted, marginTop: '4px' }}>
+                      Press to start, press again to stop
+                    </div>
+                  </button>
+                </div>
+              </SectionCard>
+
+              <SectionCard title="Recording Hotkey" step={2}>
+                <p style={{ fontSize: '13px', color: theme.textMuted, marginBottom: '16px' }}>
+                  Click the box and press your desired key combination
+                </p>
+                <div
+                  onClick={() => setRecordingHotkey(settings.hotkeys.activationMode === 'push-to-talk' ? 'pushToTalk' : 'toggle')}
+                  style={{
+                    padding: '16px 20px',
+                    backgroundColor: theme.bgHover,
+                    border: `2px solid ${recordingHotkey ? theme.primary : theme.border}`,
+                    borderRadius: '10px',
+                    fontFamily: 'monospace',
+                    fontSize: '16px',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                    color: recordingHotkey ? theme.primary : theme.text,
+                  }}
+                >
+                  {recordingHotkey
+                    ? 'Press any key...'
+                    : settings.hotkeys.activationMode === 'push-to-talk'
+                      ? settings.hotkeys.pushToTalkKey
+                      : settings.hotkeys.toggleKey
+                  }
+                </div>
+                {recordingHotkey && (
+                  <button
+                    onClick={() => setRecordingHotkey(null)}
+                    style={{
+                      marginTop: '12px',
+                      padding: '8px 16px',
+                      backgroundColor: 'transparent',
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: '6px',
+                      color: theme.textMuted,
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </SectionCard>
+
+              <SectionCard title="Cancel Recording" step={3}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '16px',
+                  backgroundColor: theme.bgHover,
+                  borderRadius: '10px',
+                }}>
+                  <code style={{
+                    padding: '8px 14px',
+                    backgroundColor: theme.bgCard,
+                    borderRadius: '6px',
+                    fontFamily: 'monospace',
+                    fontSize: '14px',
+                    border: `1px solid ${theme.border}`,
+                  }}>
+                    Escape
+                  </code>
+                  <span style={{ fontSize: '13px', color: theme.textMuted }}>
+                    Press to cancel the current recording
+                  </span>
+                </div>
+              </SectionCard>
+            </>
+          )}
+
+          {/* Audio Section */}
+          {activeSection === 'audio' && (
+            <>
+              <div style={{ marginBottom: '32px' }}>
+                <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>Audio</h1>
+                <p style={{ fontSize: '14px', color: theme.textMuted, marginTop: '8px' }}>
+                  Configure your microphone settings
+                </p>
+              </div>
+
+              <SectionCard title="Select Microphone" step={1}>
                 <select
-                  style={baseStyles.select}
                   value={selectedDevice}
-                  onChange={e => setSelectedDevice(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedDevice(e.target.value);
+                    if (micTesting) {
+                      stopMicTest();
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    backgroundColor: theme.bgHover,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: '8px',
+                    color: theme.text,
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    marginBottom: '12px',
+                  }}
                 >
                   <option value="default">System Default</option>
                   {audioDevices.map(device => (
@@ -680,67 +1190,128 @@ export function Settings() {
                     </option>
                   ))}
                 </select>
-              </div>
-              <button
-                style={{ ...baseStyles.buttonSecondary, marginTop: '8px' }}
-                onClick={loadAudioDevices}
-              >
-                Refresh Devices
-              </button>
-            </div>
+                <button
+                  onClick={loadAudioDevices}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 16px',
+                    backgroundColor: 'transparent',
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: '6px',
+                    color: theme.textMuted,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <RefreshCw size={14} /> Refresh Devices
+                </button>
+              </SectionCard>
 
-            <div style={baseStyles.section}>
-              <h3 style={baseStyles.sectionTitle}>Audio Settings</h3>
-              <div style={baseStyles.field}>
-                <label style={baseStyles.label}>Sample Rate</label>
-                <select style={baseStyles.select} defaultValue="16000">
-                  <option value="16000">16 kHz (Recommended for Whisper)</option>
-                  <option value="44100">44.1 kHz</option>
-                  <option value="48000">48 kHz</option>
-                </select>
-              </div>
-              <div style={baseStyles.field}>
-                <label style={baseStyles.label}>Noise Suppression</label>
-                <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                  <button
-                    style={{
-                      ...baseStyles.modeButton,
-                      flex: 'none',
-                      padding: '10px 20px',
-                    }}
-                  >
-                    Off
-                  </button>
-                  <button
-                    style={{
-                      ...baseStyles.modeButton,
-                      ...baseStyles.modeButtonActive,
-                      flex: 'none',
-                      padding: '10px 20px',
-                    }}
-                  >
-                    On
-                  </button>
-                </div>
-              </div>
-            </div>
+              <SectionCard title="Test Microphone" step={2}>
+                <p style={{ fontSize: '13px', color: theme.textMuted, marginBottom: '16px' }}>
+                  {micTesting ? 'Speak now to see your microphone level' : 'Click the button to test your microphone'}
+                </p>
 
-            <div style={baseStyles.section}>
-              <h3 style={baseStyles.sectionTitle}>Test Microphone</h3>
-              <p style={{ ...baseStyles.description, marginBottom: '12px' }}>
-                Click the button below to test your microphone
-              </p>
-              <button style={baseStyles.button}>
-                🎙️ Test Microphone
-              </button>
-            </div>
-          </>
-        )}
+                {/* Audio Level Meter */}
+                {micTesting && (
+                  <div style={{
+                    marginBottom: '16px',
+                    padding: '16px',
+                    backgroundColor: theme.bgHover,
+                    borderRadius: '10px',
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      marginBottom: '8px',
+                    }}>
+                      <span style={{ color: theme.primary }}><Mic size={20} /></span>
+                      <div style={{
+                        flex: 1,
+                        height: '24px',
+                        backgroundColor: theme.bgCard,
+                        borderRadius: '12px',
+                        overflow: 'hidden',
+                        border: `1px solid ${theme.border}`,
+                      }}>
+                        <div style={{
+                          height: '100%',
+                          width: `${micLevel}%`,
+                          backgroundColor: micLevel > 80 ? theme.error : micLevel > 50 ? theme.warning : theme.success,
+                          borderRadius: '12px',
+                          transition: 'width 0.05s ease-out',
+                        }} />
+                      </div>
+                      <span style={{
+                        fontSize: '13px',
+                        color: theme.textMuted,
+                        minWidth: '40px',
+                        textAlign: 'right',
+                      }}>
+                        {Math.round(micLevel)}%
+                      </span>
+                    </div>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      fontSize: '12px',
+                      color: micLevel > 10 ? theme.success : theme.textMuted,
+                    }}>
+                      {micLevel > 50 ? <><Volume2 size={14} /> Great signal!</> : micLevel > 10 ? <><Check size={14} /> Microphone working</> : 'Waiting for audio...'}
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  onClick={toggleMicTest}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '14px 24px',
+                    backgroundColor: micTesting ? theme.error : theme.primary,
+                    border: 'none',
+                    borderRadius: '10px',
+                    color: '#fff',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    transition: 'background-color 0.15s',
+                  }}
+                >
+                  {micTesting ? <Square size={16} /> : <Mic size={16} />}
+                  {micTesting ? 'Stop Test' : 'Test Microphone'}
+                </button>
+              </SectionCard>
+            </>
+          )}
+        </div>
       </main>
 
+      {/* Save indicator */}
       {saved && (
-        <div style={baseStyles.saveIndicator}>
-          ✓ Saved
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '12px 20px',
+          backgroundColor: theme.success,
+          borderRadius: '10px',
+          color: '#fff',
+          fontSize: '14px',
+          fontWeight: 500,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          animation: 'fadeIn 0.2s ease',
+        }}>
+          <Check size={16} /> Saved
         </div>
       )}
     </div>

@@ -26,11 +26,12 @@ export class OpenAILLMProvider {
       throw new Error('OpenAI API key not configured');
     }
 
+    const actualModel = model || 'gpt-4o-mini';
+
     const response = await this.client.chat.completions.create({
-      model: model || 'gpt-4o-mini',
+      model: actualModel,
       messages: [{ role: 'user', content: prompt }],
-      max_tokens: 4096,
-      temperature: 0.3,
+      max_completion_tokens: 4096,
     });
 
     return response.choices[0]?.message?.content || '';

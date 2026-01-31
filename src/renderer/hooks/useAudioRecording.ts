@@ -25,6 +25,7 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}) {
   const startTimeRef = useRef<number>(0);
   const animationFrameRef = useRef<number>(0);
   const durationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isRecordingRef = useRef(false);
 
   // Clean up on unmount
   useEffect(() => {
@@ -45,7 +46,7 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}) {
   }, []);
 
   const updateAudioLevel = useCallback(() => {
-    if (!analyserRef.current || !isRecording) return;
+    if (!analyserRef.current || !isRecordingRef.current) return;
 
     const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
     analyserRef.current.getByteFrequencyData(dataArray);
@@ -74,7 +75,7 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}) {
 
     setAudioLevel({ average, peak: peakNorm, frequencies });
     animationFrameRef.current = requestAnimationFrame(updateAudioLevel);
-  }, [isRecording]);
+  }, []);
 
   const startRecording = useCallback(async () => {
     try {
@@ -136,6 +137,7 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}) {
 
       // Start recording
       mediaRecorder.start(100); // Collect data every 100ms
+      isRecordingRef.current = true;
       setIsRecording(true);
       setDuration(0);
 
@@ -166,6 +168,7 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}) {
       clearInterval(durationIntervalRef.current);
     }
 
+    isRecordingRef.current = false;
     setIsRecording(false);
     setAudioLevel(null);
   }, []);
@@ -194,6 +197,7 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}) {
       audioContextRef.current.close();
     }
 
+    isRecordingRef.current = false;
     setIsRecording(false);
     setAudioLevel(null);
     setDuration(0);

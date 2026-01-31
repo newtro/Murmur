@@ -41,20 +41,31 @@ export class OpenAITranscriptionProvider {
 
     const file = new File([arrayBuffer], 'audio.wav', { type: 'audio/wav' });
 
+    // gpt-4o-mini-transcribe and similar models don't support verbose_json
+    const useVerboseJson = !model?.includes('transcribe');
+    const responseFormat = useVerboseJson ? 'verbose_json' : 'json';
+
     const response = await this.client.audio.transcriptions.create({
       file,
       model: model || 'whisper-1',
       language: language || undefined,
-      response_format: 'verbose_json',
+      response_format: responseFormat,
     });
 
     const duration = (Date.now() - startTime) / 1000;
 
+    // verbose_json includes language and segments, json format does not
+    const verboseResponse = response as {
+      text: string;
+      language?: string;
+      segments?: Array<{ start: number; end: number; text: string }>;
+    };
+
     return {
       text: response.text,
       duration,
-      language: response.language,
-      segments: response.segments?.map(seg => ({
+      language: verboseResponse.language,
+      segments: verboseResponse.segments?.map(seg => ({
         start: seg.start,
         end: seg.end,
         text: seg.text,

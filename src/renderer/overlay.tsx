@@ -1,7 +1,9 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import OverlayApp from './OverlayApp';
-import './styles/globals.css';
+
+// Note: Don't import globals.css here - it adds background colors
+// The overlay needs to be fully transparent
 
 const container = document.getElementById('root');
 if (container) {

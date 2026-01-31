@@ -114,17 +114,17 @@ export const LLM_MODELS = {
     { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', description: 'High capability' },
   ],
   anthropic: [
-    { id: 'claude-3-5-haiku-latest', name: 'Claude 3.5 Haiku', description: 'Fast and efficient' },
-    { id: 'claude-3-5-sonnet-latest', name: 'Claude 3.5 Sonnet', description: 'Best balance' },
-    { id: 'claude-3-opus-latest', name: 'Claude 3 Opus', description: 'Most capable' },
+    { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5', description: 'Fast and efficient' },
+    { id: 'claude-sonnet-4-5-20250929', name: 'Claude Sonnet 4.5', description: 'Best balance' },
+    { id: 'claude-opus-4-5-20251101', name: 'Claude Opus 4.5', description: 'Most capable' },
   ],
   gemini: [
-    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', description: 'Fast and free tier' },
-    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', description: 'Advanced reasoning' },
+    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Fast and capable' },
+    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: 'Advanced reasoning' },
   ],
   groq: [
     { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B', description: 'Fast inference' },
-    { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B', description: 'Good for coding' },
+    { id: 'meta-llama/llama-4-scout-17b-16e-instruct', name: 'Llama 4 Scout', description: 'Latest Llama model' },
   ],
   ollama: [
     { id: 'llama3.2', name: 'Llama 3.2', description: 'Local, free' },

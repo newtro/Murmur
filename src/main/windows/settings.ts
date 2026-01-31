@@ -22,6 +22,7 @@ export function createSettingsWindow(): BrowserWindow {
     minHeight: 400,
     title: 'Murmur Settings',
     show: false,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: preloadPath,
       contextIsolation: true,
@@ -29,11 +30,6 @@ export function createSettingsWindow(): BrowserWindow {
       sandbox: false,
     },
   });
-
-  // Open DevTools in development to see errors
-  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    settingsWindow.webContents.openDevTools({ mode: 'detach' });
-  }
 
   // Log any errors
   settingsWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {

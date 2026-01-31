@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Overlay } from './components/overlay/Overlay';
 import { useAudioRecording } from './hooks/useAudioRecording';
 import type { OverlayState } from '../shared/types';
@@ -70,12 +70,21 @@ export default function OverlayApp() {
   }, [isRecording, audioLevel]);
 
   return (
-    <Overlay
-      state={state}
-      duration={duration}
-      wordCount={wordCount}
-      error={error}
-      audioLevel={audioLevel}
-    />
+    <div style={{
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'transparent',
+    }}>
+      <Overlay
+        state={state}
+        duration={duration}
+        wordCount={wordCount}
+        error={error}
+        audioLevel={audioLevel}
+      />
+    </div>
   );
 }

@@ -15,7 +15,8 @@
     "make": "electron-forge make",
     "publish": "electron-forge publish",
     "lint": "eslint src --ext .ts,.tsx",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "generate-icons": "node scripts/generate-icons.js"
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.6.0",

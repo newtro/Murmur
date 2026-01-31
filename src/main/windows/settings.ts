@@ -11,6 +11,7 @@ declare const MAIN_WINDOW_VITE_NAME: string;
 export function createSettingsWindow(): BrowserWindow {
   // For Electron Forge + Vite, preload is built to same dir as main
   const preloadPath = path.join(__dirname, 'preload.js');
+  const iconPath = path.join(__dirname, '../../resources/icons/icon.png');
   console.log('[Settings] Creating window...');
   console.log('[Settings] Preload path:', preloadPath);
   console.log('[Settings] __dirname:', __dirname);
@@ -21,6 +22,7 @@ export function createSettingsWindow(): BrowserWindow {
     minWidth: 600,
     minHeight: 400,
     title: 'Murmur Settings',
+    icon: iconPath,
     show: false,
     autoHideMenuBar: true,
     webPreferences: {

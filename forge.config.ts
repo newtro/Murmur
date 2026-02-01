@@ -1,6 +1,8 @@
 import type { ForgeConfig } from '@electron-forge/shared-types';
 import { MakerSquirrel } from '@electron-forge/maker-squirrel';
 import { MakerZIP } from '@electron-forge/maker-zip';
+import { MakerDMG } from '@electron-forge/maker-dmg';
+import { MakerDeb } from '@electron-forge/maker-deb';
 import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 
@@ -10,6 +12,7 @@ const config: ForgeConfig = {
     executableName: 'murmur',
     icon: './resources/icons/icon',
     asar: true,
+    appBundleId: 'com.murmur.app',
   },
   rebuildConfig: {},
   makers: [
@@ -17,8 +20,22 @@ const config: ForgeConfig = {
       name: 'Murmur',
       authors: 'Murmur Contributors',
       description: 'Open source AI voice dictation',
+      setupIcon: './resources/icons/icon.ico',
     }),
-    new MakerZIP({}, ['darwin', 'linux']),
+    new MakerZIP({}, ['darwin', 'linux', 'win32']),
+    new MakerDMG({
+      name: 'Murmur',
+    }),
+    new MakerDeb({
+      options: {
+        name: 'murmur',
+        productName: 'Murmur',
+        genericName: 'Voice Dictation',
+        description: 'Open source AI voice dictation - Wispr Flow alternative',
+        categories: ['Utility', 'AudioVideo'],
+        icon: './resources/icons/icon.png',
+      },
+    }),
   ],
   plugins: [
     new AutoUnpackNativesPlugin({}),

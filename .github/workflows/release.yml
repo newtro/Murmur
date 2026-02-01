@@ -18,6 +18,7 @@ permissions:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: windows-latest
@@ -26,9 +27,6 @@ jobs:
           - os: macos-latest
             platform: darwin
             arch: x64
-          - os: macos-latest
-            platform: darwin
-            arch: arm64
           - os: ubuntu-latest
             platform: linux
             arch: x64
@@ -54,35 +52,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build and Make (Windows)
-        if: matrix.platform == 'win32'
+      - name: Build and Make
         run: npm run make -- --arch=${{ matrix.arch }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Make (macOS)
-        if: matrix.platform == 'darwin'
-        run: npm run make -- --arch=${{ matrix.arch }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and Make (Linux)
-        if: matrix.platform == 'linux'
-        run: npm run make -- --arch=${{ matrix.arch }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: List output
+        run: |
+          echo "=== out/make contents ==="
+          find out/make -type f 2>/dev/null || echo "No files in out/make"
+        shell: bash
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: murmur-${{ matrix.platform }}-${{ matrix.arch }}
-          path: |
-            out/make/**/*.exe
-            out/make/**/*.dmg
-            out/make/**/*.zip
-            out/make/**/*.deb
-            out/make/**/*.nupkg
-          if-no-files-found: warn
+          path: out/make/
+          if-no-files-found: error
 
   release:
     needs: build
@@ -96,6 +82,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          merge-multiple: true
 
       - name: Get version
         id: version
@@ -105,14 +92,15 @@ jobs:
           elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
             echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
           else
-            # Get version from package.json for main branch pushes
             VERSION=$(node -p "require('./package.json').version")
             SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
             echo "version=${VERSION}-${SHORT_SHA}" >> $GITHUB_OUTPUT
           fi
 
       - name: List artifacts
-        run: find artifacts -type f
+        run: |
+          echo "=== All artifacts ==="
+          find artifacts -type f || echo "No artifacts found"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -123,9 +111,6 @@ jobs:
           prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
           generate_release_notes: true
           files: |
-            artifacts/**/*.exe
-            artifacts/**/*.dmg
-            artifacts/**/*.zip
-            artifacts/**/*.deb
+            artifacts/**/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

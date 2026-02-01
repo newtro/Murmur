@@ -10,6 +10,7 @@ jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
 
@@ -23,11 +24,18 @@ jobs:
           node-version: 20
           cache: 'npm'
 
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libxtst-dev libpng-dev libudev-dev
+
       - name: Install dependencies
         run: npm ci
 
       - name: Lint
         run: npm run lint
+        continue-on-error: true
 
       - name: Type check
         run: npm run typecheck

@@ -5,6 +5,7 @@
 import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import { spawn } from 'child_process';
 import { createOverlayWindow } from './windows/overlay';
 import { createSettingsWindow } from './windows/settings';
 import { initializeDatabase, closeDatabase, getSettings, setSettings } from './db/store';
@@ -37,18 +38,66 @@ let pendingAudioReject: ((error: Error) => void) | null = null;
 // App Initialization
 // ============================================================================
 
-// Handle creating/removing shortcuts on Windows when installing/uninstalling
-try {
-  if (require('electron-squirrel-startup')) {
-    app.quit();
+// Handle Squirrel events on Windows (install/uninstall/update)
+function handleSquirrelEvent(): boolean {
+  if (process.platform !== 'win32') {
+    return false;
   }
-} catch {
-  // Module not installed - this is fine during development
+
+  const squirrelCommand = process.argv[1];
+  if (!squirrelCommand) {
+    return false;
+  }
+
+  const appFolder = path.resolve(process.execPath, '..');
+  const rootFolder = path.resolve(appFolder, '..');
+  const updateExe = path.resolve(rootFolder, 'Update.exe');
+  const exeName = path.basename(process.execPath);
+
+  const spawnUpdate = (args: string[]) => {
+    try {
+      spawn(updateExe, args, { detached: true });
+    } catch (e) {
+      console.error('[Murmur] Failed to spawn Update.exe:', e);
+    }
+  };
+
+  switch (squirrelCommand) {
+    case '--squirrel-install':
+    case '--squirrel-updated':
+      // Create desktop and start menu shortcuts
+      spawnUpdate(['--createShortcut', exeName]);
+      setTimeout(() => app.quit(), 1000);
+      return true;
+
+    case '--squirrel-uninstall':
+      // Remove shortcuts
+      spawnUpdate(['--removeShortcut', exeName]);
+      setTimeout(() => app.quit(), 1000);
+      return true;
+
+    case '--squirrel-obsolete':
+      app.quit();
+      return true;
+
+    default:
+      return false;
+  }
+}
+
+console.log('[Murmur] Starting main process...');
+console.log('[Murmur] Command line args:', process.argv);
+
+if (handleSquirrelEvent()) {
+  // Squirrel event handled, app will quit
+  console.log('[Murmur] Squirrel event handled, exiting...');
 }
 
 // Single instance lock
 const gotTheLock = app.requestSingleInstanceLock();
+console.log('[Murmur] Single instance lock:', gotTheLock ? 'acquired' : 'failed (another instance running)');
 if (!gotTheLock) {
+  console.log('[Murmur] Exiting - another instance is already running');
   app.quit();
 } else {
   app.on('second-instance', () => {

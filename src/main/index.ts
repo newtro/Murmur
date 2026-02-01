@@ -251,35 +251,52 @@ function createTray() {
 // ============================================================================
 
 function setupIpcHandlers() {
-  ipcMain.handle(IPC_CHANNELS.SETTINGS_GET, () => getSettings());
+  ipcMain.handle(IPC_CHANNELS.SETTINGS_GET, () => {
+    try {
+      return getSettings();
+    } catch (error) {
+      console.error('[Murmur] Failed to get settings, returning defaults:', error);
+      return DEFAULT_SETTINGS;
+    }
+  });
 
   ipcMain.handle(IPC_CHANNELS.SETTINGS_SET, (_, settings: Partial<AppSettings>) => {
-    const current = getSettings();
-    const updated = { ...current, ...settings };
-    setSettings(updated);
+    try {
+      const current = getSettings();
+      const updated = { ...current, ...settings };
+      setSettings(updated);
 
-    if (settings.apiKeys) {
-      transcriptionService?.updateApiKeys(settings.apiKeys);
-      llmService?.updateApiKeys(settings.apiKeys);
+      if (settings.apiKeys) {
+        transcriptionService?.updateApiKeys(settings.apiKeys);
+        llmService?.updateApiKeys(settings.apiKeys);
+      }
+
+      if (settings.hotkeys) {
+        hotkeyService?.updateHotkeys(settings.hotkeys);
+      }
+
+      if (settings.launchAtStartup !== undefined) {
+        app.setLoginItemSettings({
+          openAtLogin: settings.launchAtStartup,
+          path: app.getPath('exe'),
+        });
+      }
+
+      return updated;
+    } catch (error) {
+      console.error('[Murmur] Failed to set settings:', error);
+      return DEFAULT_SETTINGS;
     }
-
-    if (settings.hotkeys) {
-      hotkeyService?.updateHotkeys(settings.hotkeys);
-    }
-
-    if (settings.launchAtStartup !== undefined) {
-      app.setLoginItemSettings({
-        openAtLogin: settings.launchAtStartup,
-        path: app.getPath('exe'),
-      });
-    }
-
-    return updated;
   });
 
   ipcMain.handle(IPC_CHANNELS.SETTINGS_RESET, () => {
-    setSettings(DEFAULT_SETTINGS);
-    return DEFAULT_SETTINGS;
+    try {
+      setSettings(DEFAULT_SETTINGS);
+      return DEFAULT_SETTINGS;
+    } catch (error) {
+      console.error('[Murmur] Failed to reset settings:', error);
+      return DEFAULT_SETTINGS;
+    }
   });
 
   ipcMain.on(IPC_CHANNELS.RECORDING_START, () => startRecording());
@@ -380,6 +397,10 @@ async function initializeServices() {
 app.on('ready', async () => {
   console.log('[Murmur] App ready, initializing...');
 
+  // Set up IPC handlers first so settings window can at least show errors
+  setupIpcHandlers();
+  console.log('[Murmur] IPC handlers ready');
+
   try {
     await initializeDatabase();
     console.log('[Murmur] Database initialized');
@@ -389,9 +410,6 @@ app.on('ready', async () => {
 
     createTray();
     console.log('[Murmur] Tray created');
-
-    setupIpcHandlers();
-    console.log('[Murmur] IPC handlers ready');
 
     await initializeServices();
     console.log('[Murmur] Services initialized');

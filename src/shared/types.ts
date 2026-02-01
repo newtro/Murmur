@@ -59,6 +59,9 @@ export interface AppSettings {
   // UI
   overlayPosition: { x: number; y: number } | null;
   theme: 'light' | 'dark' | 'system';
+
+  // System
+  launchAtStartup: boolean;
 }
 
 // Default Settings
@@ -84,6 +87,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
   overlayPosition: null,
   theme: 'dark',
+
+  launchAtStartup: false,
 };
 
 // Transcription Result

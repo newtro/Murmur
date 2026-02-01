@@ -176,7 +176,7 @@ const PROCESSING_MODES: { id: ProcessingMode; name: string; description: string;
   { id: 'polish', name: 'Polish', description: 'Full rewrite for clarity', icon: <Gem size={24} /> },
 ];
 
-type Section = 'transcription' | 'ai' | 'hotkeys' | 'audio';
+type Section = 'transcription' | 'ai' | 'hotkeys' | 'audio' | 'general';
 
 interface AudioDevice {
   deviceId: string;
@@ -832,6 +832,12 @@ export function Settings() {
             active={activeSection === 'audio'}
             onClick={() => setActiveSection('audio')}
           />
+          <NavItem
+            icon={<SettingsIcon size={18} />}
+            label="General"
+            active={activeSection === 'general'}
+            onClick={() => setActiveSection('general')}
+          />
         </nav>
 
         <div style={{
@@ -1287,6 +1293,63 @@ export function Settings() {
                   {micTesting ? <Square size={16} /> : <Mic size={16} />}
                   {micTesting ? 'Stop Test' : 'Test Microphone'}
                 </button>
+              </SectionCard>
+            </>
+          )}
+
+          {/* General Section */}
+          {activeSection === 'general' && (
+            <>
+              <div style={{ marginBottom: '32px' }}>
+                <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>General</h1>
+                <p style={{ fontSize: '14px', color: theme.textMuted, marginTop: '8px' }}>
+                  Application preferences
+                </p>
+              </div>
+
+              <SectionCard title="Startup">
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '16px',
+                  backgroundColor: theme.bgHover,
+                  borderRadius: '10px',
+                }}>
+                  <div>
+                    <div style={{ fontSize: '15px', fontWeight: 500, color: theme.text }}>
+                      Launch at startup
+                    </div>
+                    <div style={{ fontSize: '13px', color: theme.textMuted, marginTop: '4px' }}>
+                      Automatically start Murmur when you log in
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => save({ launchAtStartup: !settings.launchAtStartup })}
+                    style={{
+                      width: '52px',
+                      height: '28px',
+                      borderRadius: '14px',
+                      border: 'none',
+                      backgroundColor: settings.launchAtStartup ? theme.primary : theme.bgCard,
+                      cursor: 'pointer',
+                      position: 'relative',
+                      transition: 'background-color 0.2s',
+                    }}
+                  >
+                    <div style={{
+                      width: '22px',
+                      height: '22px',
+                      borderRadius: '50%',
+                      backgroundColor: '#fff',
+                      position: 'absolute',
+                      top: '3px',
+                      left: settings.launchAtStartup ? '27px' : '3px',
+                      transition: 'left 0.2s',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                    }} />
+                  </button>
+                </div>
               </SectionCard>
             </>
           )}

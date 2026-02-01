@@ -12,7 +12,7 @@ const config: ForgeConfig = {
     executableName: 'murmur',
     icon: './resources/icons/icon',
     asar: {
-      unpack: '**/{sql.js,uiohook-napi,adm-zip}/**/*',
+      unpack: '**/uiohook-napi/**/*',
     },
     appBundleId: 'com.murmur.app',
   },

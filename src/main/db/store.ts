@@ -23,8 +23,17 @@ export async function initializeDatabase(): Promise<void> {
 
   console.log('[Murmur] Initializing database at:', dbPath);
 
-  // Initialize sql.js - it will load the WASM file from the node_modules
-  const SQL = await initSqlJs();
+  // Initialize sql.js with locateFile to find WASM in packaged app
+  const SQL = await initSqlJs({
+    locateFile: (file: string) => {
+      // In packaged app, WASM is in the same directory as the main bundle
+      if (app.isPackaged) {
+        return path.join(__dirname, file);
+      }
+      // In development, use node_modules path
+      return path.join(__dirname, '../../node_modules/sql.js/dist', file);
+    },
+  });
 
   // Load existing database or create new one
   if (fs.existsSync(dbPath)) {

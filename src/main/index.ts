@@ -282,10 +282,9 @@ function setupIpcHandlers() {
         hotkeyService?.updateHotkeys(settings.hotkeys);
       }
 
-      if (settings.launchAtStartup !== undefined) {
+      if (settings.launchAtStartup !== undefined && app.isPackaged) {
         app.setLoginItemSettings({
           openAtLogin: settings.launchAtStartup,
-          path: app.getPath('exe'),
         });
       }
 

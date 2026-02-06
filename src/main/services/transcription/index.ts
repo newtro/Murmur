@@ -6,6 +6,7 @@ import { TranscriptionProvider, TranscriptionResult, ApiKeys } from '../../../sh
 import { GroqTranscriptionProvider } from './groq';
 import { OpenAITranscriptionProvider } from './openai';
 import { WhisperLocalProvider } from './whisper-local';
+import { MistralTranscriptionProvider } from './mistral';
 
 interface TranscriptionOptions {
   provider: TranscriptionProvider;
@@ -18,12 +19,14 @@ export class TranscriptionService {
   private groqProvider: GroqTranscriptionProvider;
   private openaiProvider: OpenAITranscriptionProvider;
   private whisperProvider: WhisperLocalProvider;
+  private mistralProvider: MistralTranscriptionProvider;
 
   constructor(apiKeys: ApiKeys) {
     this.apiKeys = apiKeys;
     this.groqProvider = new GroqTranscriptionProvider(apiKeys.groq);
     this.openaiProvider = new OpenAITranscriptionProvider(apiKeys.openai);
     this.whisperProvider = new WhisperLocalProvider();
+    this.mistralProvider = new MistralTranscriptionProvider(apiKeys.mistral);
   }
 
   async transcribe(
@@ -44,6 +47,9 @@ export class TranscriptionService {
       case 'whisper-local':
         return this.whisperProvider.transcribe(audioBuffer, model, language);
 
+      case 'mistral':
+        return this.mistralProvider.transcribe(audioBuffer, model, language);
+
       default:
         throw new Error(`Unknown transcription provider: ${provider}`);
     }
@@ -53,6 +59,7 @@ export class TranscriptionService {
     this.apiKeys = apiKeys;
     this.groqProvider.updateApiKey(apiKeys.groq);
     this.openaiProvider.updateApiKey(apiKeys.openai);
+    this.mistralProvider.updateApiKey(apiKeys.mistral);
   }
 
   async validateGroqKey(apiKey: string): Promise<{ valid: boolean; error?: string }> {
@@ -61,6 +68,10 @@ export class TranscriptionService {
 
   async validateOpenAIKey(apiKey: string): Promise<{ valid: boolean; error?: string }> {
     return this.openaiProvider.validateKey(apiKey);
+  }
+
+  async validateMistralKey(apiKey: string): Promise<{ valid: boolean; error?: string }> {
+    return this.mistralProvider.validateKey(apiKey);
   }
 
   // Check if whisper model is downloaded

@@ -25,7 +25,7 @@ export function Hotkeys({ settings, onUpdate }: HotkeysProps) {
     await onUpdate({
       hotkeys: {
         ...settings.hotkeys,
-        toggleRecording: key,
+        toggleKey: key,
       },
     });
     setRecordedKey(null);
@@ -138,13 +138,13 @@ export function Hotkeys({ settings, onUpdate }: HotkeysProps) {
               <span className="font-mono">
                 {isRecording
                   ? 'Press any key combination...'
-                  : recordedKey || settings.hotkeys.toggleRecording
+                  : recordedKey || settings.hotkeys.toggleKey
                 }
               </span>
             </div>
           </div>
 
-          {recordedKey && recordedKey !== settings.hotkeys.toggleRecording && (
+          {recordedKey && recordedKey !== settings.hotkeys.toggleKey && (
             <button
               onClick={() => handleHotkeyChange(recordedKey)}
               className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg text-sm font-medium transition-colors"

@@ -356,6 +356,8 @@ function setupIpcHandlers() {
           return await transcriptionService?.validateGroqKey(apiKey);
         case 'openai':
           return await transcriptionService?.validateOpenAIKey(apiKey);
+        case 'mistral':
+          return await transcriptionService?.validateMistralKey(apiKey);
         case 'anthropic':
           return await llmService?.validateAnthropicKey(apiKey);
         case 'gemini':
@@ -438,6 +440,15 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
   hotkeyService?.stop();
   closeDatabase();
+
+  // Destroy tray so nothing keeps the process alive
+  if (tray) {
+    tray.destroy();
+    tray = null;
+  }
+
+  // Force-close all windows (overlay is non-closable by default)
+  BrowserWindow.getAllWindows().forEach(w => w.destroy());
 });
 
 app.on('activate', () => {

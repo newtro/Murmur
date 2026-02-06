@@ -77,6 +77,17 @@ const TRANSCRIPTION_PROVIDERS: {
     ],
   },
   {
+    id: 'mistral',
+    name: 'Mistral',
+    description: 'Voxtral transcription ($0.003/min)',
+    icon: <Sparkles size={20} />,
+    requiresKey: true,
+    keyName: 'mistral',
+    models: [
+      { id: 'voxtral-mini-2602', name: 'Voxtral Mini Transcribe V2', description: 'Best accuracy' },
+    ],
+  },
+  {
     id: 'whisper-local',
     name: 'Local',
     description: 'Privacy-first, runs on device',
@@ -912,13 +923,13 @@ export function Settings() {
                   <p style={{ fontSize: '13px', color: theme.textMuted, marginBottom: '12px' }}>
                     Get your API key from{' '}
                     <span style={{ color: theme.primary }}>
-                      {currentTranscriptionProvider.id === 'groq' ? 'console.groq.com' : 'platform.openai.com'}
+                      {currentTranscriptionProvider.id === 'groq' ? 'console.groq.com' : currentTranscriptionProvider.id === 'mistral' ? 'console.mistral.ai' : 'platform.openai.com'}
                     </span>
                   </p>
                   <ApiKeyInput
                     value={(settings.apiKeys as any)[currentTranscriptionProvider.keyName!] || ''}
                     onChange={(value) => updateApiKey(currentTranscriptionProvider.keyName!, value)}
-                    placeholder={currentTranscriptionProvider.id === 'groq' ? 'gsk_...' : 'sk-...'}
+                    placeholder={currentTranscriptionProvider.id === 'groq' ? 'gsk_...' : currentTranscriptionProvider.id === 'mistral' ? 'Enter Mistral API key' : 'sk-...'}
                     providerName={currentTranscriptionProvider.name}
                   />
                 </SectionCard>

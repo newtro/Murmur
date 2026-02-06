@@ -47,7 +47,7 @@ const transcriptionProviders: TranscriptionOption[] = [
     ],
   },
   {
-    id: 'local',
+    id: 'whisper-local',
     name: 'Local (whisper.cpp)',
     description: 'Offline transcription',
     requiresKey: false,

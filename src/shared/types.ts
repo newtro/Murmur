@@ -3,7 +3,7 @@
 // ============================================================================
 
 // Provider Types
-export type TranscriptionProvider = 'whisper-local' | 'groq' | 'openai';
+export type TranscriptionProvider = 'whisper-local' | 'groq' | 'openai' | 'mistral';
 export type LLMProvider = 'openai' | 'anthropic' | 'gemini' | 'groq' | 'ollama';
 export type ProcessingMode = 'raw' | 'clean' | 'polish';
 export type ActivationMode = 'push-to-talk' | 'toggle';
@@ -24,6 +24,7 @@ export interface ApiKeys {
   openai?: string;
   anthropic?: string;
   gemini?: string;
+  mistral?: string;
 }
 
 // Hotkey Configuration

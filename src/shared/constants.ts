@@ -97,6 +97,9 @@ export const TRANSCRIPTION_MODELS = {
     { id: 'gpt-4o-mini-transcribe', name: 'GPT-4o Mini Transcribe', description: 'Good accuracy ($0.003/min)' },
     { id: 'whisper-1', name: 'Whisper-1', description: 'Classic Whisper API' },
   ],
+  mistral: [
+    { id: 'voxtral-mini-2602', name: 'Voxtral Mini Transcribe V2', description: 'Best accuracy ($0.003/min)' },
+  ],
   'whisper-local': [
     { id: 'tiny', name: 'Tiny', description: '75MB - Fastest' },
     { id: 'base', name: 'Base', description: '142MB - Balanced' },

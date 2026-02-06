@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MurmurAi - Privacy Policy</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 720px; margin: 0 auto; padding: 2rem 1rem; color: #222; line-height: 1.6; }
+    h1 { font-size: 1.8rem; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
+    h2 { font-size: 1.3rem; margin-top: 2rem; }
+    ul, ol { padding-left: 1.5rem; }
+    a { color: #0066cc; }
+    .updated { color: #666; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <h1>Privacy Policy</h1>
+  <p class="updated">Last updated: February 6, 2026</p>
+
+  <h2>Overview</h2>
+  <p>MurmurAi is an open-source desktop application for AI-powered voice dictation. This privacy policy explains how MurmurAi handles your data.</p>
+
+  <h2>Data Collection</h2>
+  <p>MurmurAi does <strong>not</strong> collect, store, or transmit any personal data to us. The application runs entirely on your device.</p>
+
+  <h2>Audio Data</h2>
+  <ul>
+    <li>Audio is captured locally on your device only while you are actively recording.</li>
+    <li>Audio recordings are held temporarily in memory during processing and are <strong>not</strong> saved to disk.</li>
+    <li>When using cloud transcription providers (Groq, OpenAI, Mistral), audio is sent directly from your device to the selected provider's API for transcription. MurmurAi does not act as an intermediary and does not retain copies of audio sent to these services.</li>
+    <li>When using local transcription (Whisper), audio never leaves your device.</li>
+  </ul>
+
+  <h2>Third-Party API Services</h2>
+  <p>If you choose to use cloud-based providers, your data is subject to their respective privacy policies:</p>
+  <ul>
+    <li><strong>OpenAI</strong>: <a href="https://openai.com/privacy">https://openai.com/privacy</a></li>
+    <li><strong>Groq</strong>: <a href="https://groq.com/privacy-policy">https://groq.com/privacy-policy</a></li>
+    <li><strong>Mistral</strong>: <a href="https://mistral.ai/terms/#privacy-policy">https://mistral.ai/terms/#privacy-policy</a></li>
+    <li><strong>Anthropic</strong>: <a href="https://www.anthropic.com/privacy">https://www.anthropic.com/privacy</a></li>
+    <li><strong>Google (Gemini)</strong>: <a href="https://ai.google.dev/terms">https://ai.google.dev/terms</a></li>
+  </ul>
+  <p>API keys you configure are stored locally on your device in a SQLite database and are never shared with anyone other than the respective API provider.</p>
+
+  <h2>Local Storage</h2>
+  <p>MurmurAi stores the following data locally on your device:</p>
+  <ul>
+    <li>Application settings and preferences</li>
+    <li>API keys for configured providers</li>
+    <li>Transcription history (if enabled)</li>
+  </ul>
+  <p>This data is stored in a local SQLite database and is never transmitted externally.</p>
+
+  <h2>Analytics and Telemetry</h2>
+  <p>MurmurAi does <strong>not</strong> include any analytics, telemetry, crash reporting, or tracking of any kind.</p>
+
+  <h2>Network Requests</h2>
+  <p>MurmurAi only makes network requests when:</p>
+  <ol>
+    <li>Sending audio to a cloud transcription provider you have configured</li>
+    <li>Sending text to an LLM provider you have configured</li>
+    <li>Downloading local model files (when using local Whisper)</li>
+  </ol>
+  <p>No other network requests are made.</p>
+
+  <h2>Children's Privacy</h2>
+  <p>MurmurAi does not knowingly collect any data from children under 13.</p>
+
+  <h2>Changes to This Policy</h2>
+  <p>Changes to this privacy policy will be posted in this repository. The "Last updated" date at the top will be revised accordingly.</p>
+
+  <h2>Contact</h2>
+  <p>For privacy-related questions, please open an issue at <a href="https://github.com/newtro/Murmur/issues">https://github.com/newtro/Murmur/issues</a>.</p>
+
+  <h2>Open Source</h2>
+  <p>MurmurAi is open source under the MIT License. You can audit the complete source code at <a href="https://github.com/newtro/Murmur">https://github.com/newtro/Murmur</a> to verify these privacy practices.</p>
+</body>
+</html>

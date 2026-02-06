@@ -129,6 +129,11 @@ export const LLM_MODELS = {
     { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B', description: 'Fast inference' },
     { id: 'meta-llama/llama-4-scout-17b-16e-instruct', name: 'Llama 4 Scout', description: 'Latest Llama model' },
   ],
+  mistral: [
+    { id: 'mistral-small-latest', name: 'Mistral Small', description: 'Fast & efficient' },
+    { id: 'mistral-medium-latest', name: 'Mistral Medium', description: 'Balanced' },
+    { id: 'mistral-large-latest', name: 'Mistral Large', description: 'Most capable' },
+  ],
   ollama: [
     { id: 'llama3.2', name: 'Llama 3.2', description: 'Local, free' },
     { id: 'mistral', name: 'Mistral', description: 'Local, efficient' },

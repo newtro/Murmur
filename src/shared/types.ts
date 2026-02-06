@@ -4,7 +4,7 @@
 
 // Provider Types
 export type TranscriptionProvider = 'whisper-local' | 'groq' | 'openai' | 'mistral';
-export type LLMProvider = 'openai' | 'anthropic' | 'gemini' | 'groq' | 'ollama';
+export type LLMProvider = 'openai' | 'anthropic' | 'gemini' | 'groq' | 'ollama' | 'mistral';
 export type ProcessingMode = 'raw' | 'clean' | 'polish';
 export type ActivationMode = 'push-to-talk' | 'toggle';
 

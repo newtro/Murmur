@@ -167,6 +167,19 @@ const LLM_PROVIDERS: {
     ],
   },
   {
+    id: 'mistral',
+    name: 'Mistral',
+    description: 'Mistral AI models',
+    icon: <Sparkles size={20} />,
+    requiresKey: true,
+    keyName: 'mistral',
+    models: [
+      { id: 'mistral-small-latest', name: 'Mistral Small', description: 'Fast & efficient' },
+      { id: 'mistral-medium-latest', name: 'Mistral Medium', description: 'Balanced' },
+      { id: 'mistral-large-latest', name: 'Mistral Large', description: 'Most capable' },
+    ],
+  },
+  {
     id: 'ollama',
     name: 'Ollama',
     description: 'Local models',

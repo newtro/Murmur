@@ -9,6 +9,7 @@ import { AnthropicLLMProvider } from './anthropic';
 import { GeminiLLMProvider } from './gemini';
 import { GroqLLMProvider } from './groq';
 import { OllamaLLMProvider } from './ollama';
+import { MistralLLMProvider } from './mistral';
 
 interface ProcessOptions {
   provider: LLMProvider;
@@ -23,6 +24,7 @@ export class LLMService {
   private geminiProvider: GeminiLLMProvider;
   private groqProvider: GroqLLMProvider;
   private ollamaProvider: OllamaLLMProvider;
+  private mistralProvider: MistralLLMProvider;
 
   constructor(apiKeys: ApiKeys) {
     this.apiKeys = apiKeys;
@@ -31,6 +33,7 @@ export class LLMService {
     this.geminiProvider = new GeminiLLMProvider(apiKeys.gemini);
     this.groqProvider = new GroqLLMProvider(apiKeys.groq);
     this.ollamaProvider = new OllamaLLMProvider();
+    this.mistralProvider = new MistralLLMProvider(apiKeys.mistral);
   }
 
   async process(text: string, options: ProcessOptions): Promise<LLMResult> {
@@ -73,6 +76,10 @@ export class LLMService {
         processedText = await this.ollamaProvider.complete(fullPrompt, model);
         break;
 
+      case 'mistral':
+        processedText = await this.mistralProvider.complete(fullPrompt, model);
+        break;
+
       default:
         throw new Error(`Unknown LLM provider: ${provider}`);
     }
@@ -91,6 +98,11 @@ export class LLMService {
     this.anthropicProvider.updateApiKey(apiKeys.anthropic);
     this.geminiProvider.updateApiKey(apiKeys.gemini);
     this.groqProvider.updateApiKey(apiKeys.groq);
+    this.mistralProvider.updateApiKey(apiKeys.mistral);
+  }
+
+  async validateMistralKey(apiKey: string): Promise<{ valid: boolean; error?: string }> {
+    return this.mistralProvider.validateKey(apiKey);
   }
 
   async validateAnthropicKey(apiKey: string): Promise<{ valid: boolean; error?: string }> {

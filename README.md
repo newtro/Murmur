@@ -7,8 +7,8 @@ An open-source AI voice dictation desktop app. A free alternative to [Wispr Flow
 ## Features
 
 - **Voice-to-text dictation** - Press a hotkey, speak, and your words are transcribed and pasted into any application
-- **Multiple transcription providers** - Choose from Groq, OpenAI, or local Whisper models
-- **AI text processing** - Optionally clean up or polish transcriptions using LLMs (OpenAI, Anthropic, Google Gemini, Groq, or local Ollama)
+- **Multiple transcription providers** - Choose from Groq, OpenAI, Mistral, or local Whisper models
+- **AI text processing** - Optionally clean up or polish transcriptions using LLMs (OpenAI, Anthropic, Google Gemini, Groq, Mistral, or local Ollama)
 - **Privacy-first local option** - Run entirely offline with local Whisper models
 - **Cross-platform** - Built with Electron for Windows, macOS, and Linux
 
@@ -27,7 +27,7 @@ An open-source AI voice dictation desktop app. A free alternative to [Wispr Flow
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/murmur.git
+git clone https://github.com/newtro/Murmur.git
 cd murmur
 
 # Install dependencies
@@ -55,6 +55,7 @@ npm run make
 |----------|-------------|------------------|
 | **Groq** | Fast cloud transcription with Whisper | Yes |
 | **OpenAI** | GPT-4o transcription or Whisper-1 | Yes |
+| **Mistral** | Voxtral cloud transcription | Yes |
 | **Local** | On-device Whisper (privacy-first) | No |
 
 ### LLM Providers (for text processing)
@@ -63,8 +64,9 @@ npm run make
 |----------|--------|------------------|
 | **Groq** | Llama 4 Scout, Llama 3.3 70B | Yes |
 | **OpenAI** | GPT-4o, GPT-4o Mini | Yes |
-| **Anthropic** | Claude Sonnet 4.5, Haiku 4.5, Opus 4.5 | Yes |
+| **Anthropic** | Claude Haiku 4.5, Sonnet 4.5, Opus 4.5 | Yes |
 | **Google Gemini** | Gemini 2.5 Flash, Gemini 2.5 Pro | Yes |
+| **Mistral** | Mistral Small, Medium, Large | Yes |
 | **Ollama** | Any local model | No |
 
 ### Processing Modes
@@ -88,7 +90,7 @@ Built with:
 - **React** - UI components
 - **TypeScript** - Type safety
 - **Vite** - Fast builds and HMR
-- **SQLite (sql.js)** - Local settings storage
+- **JSON file store** - Local settings and history storage
 - **uiohook-napi** - Global hotkey capture
 
 ## License

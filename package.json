@@ -1,6 +1,6 @@
 {
   "name": "murmur",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Open source AI voice dictation - Wispr Flow alternative",
   "main": ".vite/build/index.js",
   "author": "Murmur Contributors",

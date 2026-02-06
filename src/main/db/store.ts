@@ -1,17 +1,58 @@
 // ============================================================================
-// SQLite Database Store for Settings and History
-// Uses sql.js (SQLite compiled to WebAssembly) for cross-platform compatibility
+// JSON File Store for Settings and History
 // ============================================================================
 
-import initSqlJs, { Database as SqlJsDatabase } from 'sql.js';
 import { app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { AppSettings, DEFAULT_SETTINGS, TranscriptionHistoryItem } from '../../shared/types';
 
-let db: SqlJsDatabase | null = null;
-let dbPath: string = '';
-let saveTimer: ReturnType<typeof setTimeout> | null = null;
+interface StoreData {
+  settings: AppSettings;
+  history: TranscriptionHistoryItem[];
+  dictionary: string[];
+}
+
+let storePath: string = '';
+let data: StoreData | null = null;
+
+function defaultData(): StoreData {
+  return {
+    settings: { ...DEFAULT_SETTINGS },
+    history: [],
+    dictionary: [],
+  };
+}
+
+function loadFromDisk(): StoreData {
+  try {
+    if (fs.existsSync(storePath)) {
+      const raw = fs.readFileSync(storePath, 'utf-8');
+      const parsed = JSON.parse(raw) as Partial<StoreData>;
+      return {
+        settings: { ...DEFAULT_SETTINGS, ...(parsed.settings || {}) },
+        history: Array.isArray(parsed.history) ? parsed.history : [],
+        dictionary: Array.isArray(parsed.dictionary) ? parsed.dictionary : [],
+      };
+    }
+  } catch (error) {
+    console.error('[Murmur] Failed to read store file, using defaults:', error);
+  }
+  return defaultData();
+}
+
+function saveToDisk(): void {
+  if (!data) return;
+  try {
+    const dir = path.dirname(storePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(storePath, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (error) {
+    console.error('[Murmur] Failed to write store file:', error);
+  }
+}
 
 // ============================================================================
 // Database Initialization
@@ -19,114 +60,25 @@ let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
 export async function initializeDatabase(): Promise<void> {
   const userDataPath = app.getPath('userData');
-  dbPath = path.join(userDataPath, 'murmur.db');
 
-  console.log('[Murmur] Initializing database at:', dbPath);
-
-  // Initialize sql.js with locateFile to find WASM in packaged app
-  const SQL = await initSqlJs({
-    locateFile: (file: string) => {
-      // In packaged app, WASM is in the same directory as the main bundle
-      if (app.isPackaged) {
-        return path.join(__dirname, file);
-      }
-      // In development, use node_modules path
-      return path.join(__dirname, '../../node_modules/sql.js/dist', file);
-    },
-  });
-
-  // Load existing database or create new one
-  if (fs.existsSync(dbPath)) {
-    try {
-      const fileBuffer = fs.readFileSync(dbPath);
-      db = new SQL.Database(fileBuffer);
-      console.log('[Murmur] Loaded existing database');
-    } catch (error) {
-      console.error('[Murmur] Failed to load database, creating new:', error);
-      db = new SQL.Database();
-    }
-  } else {
-    db = new SQL.Database();
-    console.log('[Murmur] Created new database');
+  if (!fs.existsSync(userDataPath)) {
+    fs.mkdirSync(userDataPath, { recursive: true });
   }
 
-  // Create tables
-  db.run(`
-    CREATE TABLE IF NOT EXISTS settings (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL
-    )
-  `);
+  storePath = path.join(userDataPath, 'murmur-store.json');
+  console.log('[Murmur] Initializing store at:', storePath);
 
-  db.run(`
-    CREATE TABLE IF NOT EXISTS history (
-      id TEXT PRIMARY KEY,
-      timestamp INTEGER NOT NULL,
-      original_text TEXT NOT NULL,
-      processed_text TEXT NOT NULL,
-      duration REAL NOT NULL,
-      transcription_provider TEXT NOT NULL,
-      llm_provider TEXT,
-      processing_mode TEXT NOT NULL,
-      app_name TEXT
-    )
-  `);
+  data = loadFromDisk();
+  saveToDisk(); // ensure file exists on first run
 
-  db.run(`
-    CREATE TABLE IF NOT EXISTS dictionary (
-      word TEXT PRIMARY KEY,
-      added_at INTEGER NOT NULL
-    )
-  `);
-
-  db.run(`CREATE INDEX IF NOT EXISTS idx_history_timestamp ON history(timestamp DESC)`);
-
-  // Initialize settings if empty
-  const result = db.exec('SELECT COUNT(*) as count FROM settings');
-  const count = result.length > 0 ? result[0].values[0][0] as number : 0;
-  if (count === 0) {
-    setSettings(DEFAULT_SETTINGS);
-  }
-
-  // Save database to disk
-  saveDatabase();
-
-  console.log('[Murmur] Database initialized successfully');
-}
-
-function saveDatabase(): void {
-  if (!db) return;
-
-  try {
-    const data = db.export();
-    const buffer = Buffer.from(data);
-    fs.writeFileSync(dbPath, buffer);
-  } catch (error) {
-    console.error('[Murmur] Failed to save database:', error);
-  }
-}
-
-// Debounced save to avoid excessive disk writes
-function scheduleSave(): void {
-  if (saveTimer) {
-    clearTimeout(saveTimer);
-  }
-  saveTimer = setTimeout(() => {
-    saveDatabase();
-    saveTimer = null;
-  }, 1000);
+  console.log('[Murmur] Store initialized successfully');
 }
 
 export function closeDatabase(): void {
-  if (saveTimer) {
-    clearTimeout(saveTimer);
-    saveTimer = null;
-  }
-
-  if (db) {
-    saveDatabase();
-    db.close();
-    db = null;
+  if (data) {
+    saveToDisk();
+    data = null;
+    console.log('[Murmur] Store closed');
   }
 }
 
@@ -135,30 +87,14 @@ export function closeDatabase(): void {
 // ============================================================================
 
 export function getSettings(): AppSettings {
-  if (!db) throw new Error('Database not initialized');
-
-  const result = db.exec("SELECT value FROM settings WHERE key = 'app_settings'");
-
-  if (result.length > 0 && result[0].values.length > 0) {
-    try {
-      return JSON.parse(result[0].values[0][0] as string) as AppSettings;
-    } catch {
-      return DEFAULT_SETTINGS;
-    }
-  }
-
-  return DEFAULT_SETTINGS;
+  if (!data) throw new Error('Store not initialized');
+  return { ...data.settings };
 }
 
 export function setSettings(settings: AppSettings): void {
-  if (!db) throw new Error('Database not initialized');
-
-  db.run(
-    "INSERT OR REPLACE INTO settings (key, value) VALUES ('app_settings', ?)",
-    [JSON.stringify(settings)]
-  );
-
-  scheduleSave();
+  if (!data) throw new Error('Store not initialized');
+  data.settings = { ...settings };
+  saveToDisk();
 }
 
 // ============================================================================
@@ -166,73 +102,26 @@ export function setSettings(settings: AppSettings): void {
 // ============================================================================
 
 export function addHistoryItem(item: TranscriptionHistoryItem): void {
-  if (!db) throw new Error('Database not initialized');
-
-  db.run(
-    `INSERT INTO history (
-      id, timestamp, original_text, processed_text, duration,
-      transcription_provider, llm_provider, processing_mode, app_name
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      item.id,
-      item.timestamp,
-      item.originalText,
-      item.processedText,
-      item.duration,
-      item.transcriptionProvider,
-      item.llmProvider || null,
-      item.processingMode,
-      item.appName || null
-    ]
-  );
-
-  scheduleSave();
+  if (!data) throw new Error('Store not initialized');
+  data.history.unshift(item);
+  saveToDisk();
 }
 
 export function getHistory(limit = 100, offset = 0): TranscriptionHistoryItem[] {
-  if (!db) throw new Error('Database not initialized');
-
-  const result = db.exec(
-    `SELECT * FROM history ORDER BY timestamp DESC LIMIT ${limit} OFFSET ${offset}`
-  );
-
-  if (result.length === 0) return [];
-
-  const columns = result[0].columns;
-  const rows = result[0].values;
-
-  return rows.map((row: (number | string | Uint8Array | null)[]) => {
-    const obj: Record<string, unknown> = {};
-    columns.forEach((col: string, idx: number) => {
-      obj[col] = row[idx];
-    });
-
-    return {
-      id: obj.id as string,
-      timestamp: obj.timestamp as number,
-      originalText: obj.original_text as string,
-      processedText: obj.processed_text as string,
-      duration: obj.duration as number,
-      transcriptionProvider: obj.transcription_provider as TranscriptionHistoryItem['transcriptionProvider'],
-      llmProvider: obj.llm_provider as TranscriptionHistoryItem['llmProvider'],
-      processingMode: obj.processing_mode as TranscriptionHistoryItem['processingMode'],
-      appName: (obj.app_name as string) || undefined,
-    };
-  });
+  if (!data) throw new Error('Store not initialized');
+  return data.history.slice(offset, offset + limit);
 }
 
 export function deleteHistoryItem(id: string): void {
-  if (!db) throw new Error('Database not initialized');
-
-  db.run('DELETE FROM history WHERE id = ?', [id]);
-  scheduleSave();
+  if (!data) throw new Error('Store not initialized');
+  data.history = data.history.filter(item => item.id !== id);
+  saveToDisk();
 }
 
 export function clearHistory(): void {
-  if (!db) throw new Error('Database not initialized');
-
-  db.run('DELETE FROM history');
-  scheduleSave();
+  if (!data) throw new Error('Store not initialized');
+  data.history = [];
+  saveToDisk();
 }
 
 // ============================================================================
@@ -240,29 +129,21 @@ export function clearHistory(): void {
 // ============================================================================
 
 export function getDictionary(): string[] {
-  if (!db) throw new Error('Database not initialized');
-
-  const result = db.exec('SELECT word FROM dictionary ORDER BY word');
-
-  if (result.length === 0) return [];
-
-  return result[0].values.map((row: (number | string | Uint8Array | null)[]) => row[0] as string);
+  if (!data) throw new Error('Store not initialized');
+  return [...data.dictionary].sort();
 }
 
 export function addToDictionary(word: string): void {
-  if (!db) throw new Error('Database not initialized');
-
-  db.run(
-    'INSERT OR IGNORE INTO dictionary (word, added_at) VALUES (?, ?)',
-    [word.trim(), Date.now()]
-  );
-
-  scheduleSave();
+  if (!data) throw new Error('Store not initialized');
+  const trimmed = word.trim();
+  if (!data.dictionary.includes(trimmed)) {
+    data.dictionary.push(trimmed);
+    saveToDisk();
+  }
 }
 
 export function removeFromDictionary(word: string): void {
-  if (!db) throw new Error('Database not initialized');
-
-  db.run('DELETE FROM dictionary WHERE word = ?', [word.trim()]);
-  scheduleSave();
+  if (!data) throw new Error('Store not initialized');
+  data.dictionary = data.dictionary.filter(w => w !== word.trim());
+  saveToDisk();
 }

@@ -29,6 +29,9 @@ export const IPC_CHANNELS = {
   // App
   APP_QUIT: 'app:quit',
 
+  // DevTools
+  DEVTOOLS_OPEN: 'devtools:open',
+
   // API Validation
   VALIDATE_API_KEY: 'validate:api-key',
 

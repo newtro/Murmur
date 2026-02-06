@@ -2,19 +2,17 @@
 // Settings Window - Main configuration panel
 // ============================================================================
 
-import { BrowserWindow } from 'electron';
+import { app, BrowserWindow } from 'electron';
 import path from 'path';
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
 
 export function createSettingsWindow(): BrowserWindow {
-  // For Electron Forge + Vite, preload is built to same dir as main
   const preloadPath = path.join(__dirname, 'preload.js');
-  const iconPath = path.join(__dirname, '../../resources/icons/icon.png');
-  console.log('[Settings] Creating window...');
-  console.log('[Settings] Preload path:', preloadPath);
-  console.log('[Settings] __dirname:', __dirname);
+  const iconPath = app.isPackaged
+    ? path.join(process.resourcesPath, 'icons', 'icon.png')
+    : path.join(__dirname, '../../resources/icons/icon.png');
 
   const settingsWindow = new BrowserWindow({
     width: 900,
@@ -47,6 +45,10 @@ export function createSettingsWindow(): BrowserWindow {
   settingsWindow.once('ready-to-show', () => {
     console.log('[Settings] Window ready to show');
     settingsWindow.show();
+    // Open DevTools in development
+    if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+      settingsWindow.webContents.openDevTools();
+    }
   });
 
   // Load the settings HTML

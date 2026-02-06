@@ -57,6 +57,7 @@ contextBridge.exposeInMainWorld('murmur', {
   openSettings: () => ipcRenderer.send(IPC_CHANNELS.WINDOW_SETTINGS_OPEN),
   closeSettings: () => ipcRenderer.send(IPC_CHANNELS.WINDOW_SETTINGS_CLOSE),
   quit: () => ipcRenderer.send(IPC_CHANNELS.APP_QUIT),
+  openDevTools: () => ipcRenderer.send(IPC_CHANNELS.DEVTOOLS_OPEN),
 
   // API key validation
   validateApiKey: (provider: string, apiKey: string): Promise<{ valid: boolean; error?: string }> =>
@@ -81,6 +82,7 @@ declare global {
       openSettings: () => void;
       closeSettings: () => void;
       quit: () => void;
+      openDevTools: () => void;
       validateApiKey: (provider: string, apiKey: string) => Promise<{ valid: boolean; error?: string }>;
     };
   }

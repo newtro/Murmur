@@ -19,6 +19,7 @@ import {
   Check,
   Settings as SettingsIcon,
   Loader2,
+  Bug,
 } from 'lucide-react';
 
 // Modern dark theme
@@ -673,14 +674,25 @@ export function Settings() {
   };
 
   const save = useCallback(async (updates: Partial<AppSettings>) => {
-    if (!settings) return;
+    if (!settings) {
+      console.error('[Settings] Cannot save - settings is null');
+      return;
+    }
     try {
+      console.log('[Settings] Saving updates:', JSON.stringify(updates));
+      console.log('[Settings] Current settings provider:', settings.transcriptionProvider);
       const updated = await window.murmur.setSettings(updates);
+      console.log('[Settings] Received updated settings:', JSON.stringify(updated));
+      console.log('[Settings] Updated provider:', updated?.transcriptionProvider);
+      if (!updated) {
+        console.error('[Settings] Received null/undefined from setSettings');
+        return;
+      }
       setSettings(updated);
       setSaved(true);
       setTimeout(() => setSaved(false), 1500);
     } catch (err) {
-      console.error('Save failed:', err);
+      console.error('[Settings] Save failed:', err);
     }
   }, [settings]);
 
@@ -1348,6 +1360,45 @@ export function Settings() {
                       transition: 'left 0.2s',
                       boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
                     }} />
+                  </button>
+                </div>
+              </SectionCard>
+
+              <SectionCard title="Developer">
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '16px',
+                  backgroundColor: theme.bgHover,
+                  borderRadius: '10px',
+                }}>
+                  <div>
+                    <div style={{ fontSize: '15px', fontWeight: 500, color: theme.text }}>
+                      Open DevTools
+                    </div>
+                    <div style={{ fontSize: '13px', color: theme.textMuted, marginTop: '4px' }}>
+                      Open Chrome Developer Tools for debugging
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => window.murmur.openDevTools()}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '10px 16px',
+                      backgroundColor: theme.bgCard,
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: '8px',
+                      color: theme.text,
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <Bug size={16} /> DevTools
                   </button>
                 </div>
               </SectionCard>

@@ -4,8 +4,6 @@
 
 import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } from 'electron';
 import * as path from 'path';
-import * as fs from 'fs';
-import { spawn } from 'child_process';
 import { createOverlayWindow } from './windows/overlay';
 import { createSettingsWindow } from './windows/settings';
 import { initializeDatabase, closeDatabase, getSettings, setSettings } from './db/store';
@@ -35,72 +33,33 @@ let pendingAudioResolve: ((buffer: Buffer) => void) | null = null;
 let pendingAudioReject: ((error: Error) => void) | null = null;
 
 // ============================================================================
-// App Initialization
+// Helpers
 // ============================================================================
 
-// Handle Squirrel events on Windows (install/uninstall/update)
-function handleSquirrelEvent(): boolean {
-  if (process.platform !== 'win32') {
-    return false;
+/** Resolve a path under resources/icons/ that works in both dev and packaged builds. */
+function getIconPath(filename: string): string {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'icons', filename);
   }
-
-  const squirrelCommand = process.argv[1];
-  if (!squirrelCommand) {
-    return false;
-  }
-
-  const appFolder = path.resolve(process.execPath, '..');
-  const rootFolder = path.resolve(appFolder, '..');
-  const updateExe = path.resolve(rootFolder, 'Update.exe');
-  const exeName = path.basename(process.execPath);
-
-  const spawnUpdate = (args: string[]) => {
-    try {
-      spawn(updateExe, args, { detached: true });
-    } catch (e) {
-      console.error('[Murmur] Failed to spawn Update.exe:', e);
-    }
-  };
-
-  switch (squirrelCommand) {
-    case '--squirrel-install':
-    case '--squirrel-updated':
-      // Create desktop and start menu shortcuts
-      spawnUpdate(['--createShortcut', exeName]);
-      setTimeout(() => app.quit(), 1000);
-      return true;
-
-    case '--squirrel-uninstall':
-      // Remove shortcuts
-      spawnUpdate(['--removeShortcut', exeName]);
-      setTimeout(() => app.quit(), 1000);
-      return true;
-
-    case '--squirrel-obsolete':
-      app.quit();
-      return true;
-
-    default:
-      return false;
-  }
+  return path.join(__dirname, '../../resources/icons', filename);
 }
+
+// ============================================================================
+// App Initialization
+// ============================================================================
 
 console.log('[Murmur] Starting main process...');
 console.log('[Murmur] Command line args:', process.argv);
 
-if (handleSquirrelEvent()) {
-  // Squirrel event handled, app will quit
-  console.log('[Murmur] Squirrel event handled, exiting...');
-}
-
 // Single instance lock
 const gotTheLock = app.requestSingleInstanceLock();
-console.log('[Murmur] Single instance lock:', gotTheLock ? 'acquired' : 'failed (another instance running)');
 if (!gotTheLock) {
-  console.log('[Murmur] Exiting - another instance is already running');
+  console.log('[Murmur] Another instance is running, exiting...');
   app.quit();
 } else {
+  console.log('[Murmur] Single instance lock acquired');
   app.on('second-instance', () => {
+    console.log('[Murmur] Second instance attempted, showing settings window');
     if (settingsWindow) {
       if (settingsWindow.isMinimized()) settingsWindow.restore();
       settingsWindow.focus();
@@ -268,8 +227,7 @@ function createTray() {
   console.log('[Murmur] Creating tray icon...');
 
   // Load tray icon from resources
-  const iconPath = path.join(__dirname, '../../resources/icons/icon.png');
-  let trayIcon = nativeImage.createFromPath(iconPath);
+  let trayIcon = nativeImage.createFromPath(getIconPath('icon.png'));
 
   // Resize for tray (16x16 on Windows)
   if (!trayIcon.isEmpty()) {
@@ -385,6 +343,11 @@ function setupIpcHandlers() {
   ipcMain.on(IPC_CHANNELS.WINDOW_SETTINGS_OPEN, () => createAndShowSettingsWindow());
   ipcMain.on(IPC_CHANNELS.WINDOW_SETTINGS_CLOSE, () => settingsWindow?.close());
   ipcMain.on(IPC_CHANNELS.APP_QUIT, () => app.quit());
+  ipcMain.on(IPC_CHANNELS.DEVTOOLS_OPEN, () => {
+    if (settingsWindow && !settingsWindow.isDestroyed()) {
+      settingsWindow.webContents.openDevTools();
+    }
+  });
 
   ipcMain.handle(IPC_CHANNELS.VALIDATE_API_KEY, async (_, provider: string, apiKey: string) => {
     try {
@@ -448,7 +411,6 @@ app.on('ready', async () => {
 
   // Set up IPC handlers first so settings window can at least show errors
   setupIpcHandlers();
-  console.log('[Murmur] IPC handlers ready');
 
   try {
     await initializeDatabase();

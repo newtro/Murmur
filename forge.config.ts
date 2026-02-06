@@ -3,6 +3,7 @@ import MakerNSIS from '@felixrieseberg/electron-forge-maker-nsis';
 import { MakerZIP } from '@electron-forge/maker-zip';
 import { MakerDMG } from '@electron-forge/maker-dmg';
 import { MakerDeb } from '@electron-forge/maker-deb';
+import { MakerMSIX } from '@electron-forge/maker-msix';
 import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import * as path from 'path';
@@ -102,6 +103,10 @@ const config: ForgeConfig = {
           target: ['nsis'],
         },
       }),
+    }),
+    new MakerMSIX({
+      appManifest: path.resolve(__dirname, 'resources/AppxManifest.xml'),
+      sign: false, // Microsoft signs MSIX packages submitted to the Store
     }),
     new MakerZIP({}, ['darwin', 'linux', 'win32']),
     new MakerDMG({

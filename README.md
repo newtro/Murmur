@@ -49,13 +49,24 @@ npm run make
 
 ## Configuration
 
+### Recommended: Mistral AI (Free Tier)
+
+If you're new to Murmur, [Mistral AI](https://mistral.ai) is a great place to start. Their **free Experiment plan** gives you API access for both transcription and text processing — no credit card required, just a verified phone number.
+
+1. Sign up at [console.mistral.ai](https://console.mistral.ai)
+2. Activate the **Experiment** plan (free)
+3. Generate an API key
+4. In Murmur, select **Mistral** as both your transcription and LLM provider and paste your key
+
+This lets you use **Voxtral** for transcription and models like **Mistral Small** for text processing at no cost. Note that API requests on the free plan may be used by Mistral to improve their models.
+
 ### Transcription Providers
 
 | Provider | Description | API Key Required |
 |----------|-------------|------------------|
 | **Groq** | Fast cloud transcription with Whisper | Yes |
 | **OpenAI** | GPT-4o transcription or Whisper-1 | Yes |
-| **Mistral** | Voxtral cloud transcription | Yes |
+| **Mistral** | Voxtral cloud transcription | Yes ([free tier available](https://mistral.ai/pricing)) |
 | **Local** | On-device Whisper (privacy-first) | No |
 
 ### LLM Providers (for text processing)
@@ -66,7 +77,7 @@ npm run make
 | **OpenAI** | GPT-4o, GPT-4o Mini | Yes |
 | **Anthropic** | Claude Haiku 4.5, Sonnet 4.5, Opus 4.5 | Yes |
 | **Google Gemini** | Gemini 2.5 Flash, Gemini 2.5 Pro | Yes |
-| **Mistral** | Mistral Small, Medium, Large | Yes |
+| **Mistral** | Mistral Small, Medium, Large | Yes ([free tier available](https://mistral.ai/pricing)) |
 | **Ollama** | Any local model | No |
 
 ### Processing Modes

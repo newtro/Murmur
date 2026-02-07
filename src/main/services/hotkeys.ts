@@ -10,6 +10,7 @@ import { KEY_CODES } from '../../shared/constants';
 interface HotkeyEvents {
   keyDown: () => void;
   keyUp: () => void;
+  correctKeyDown: () => void;
 }
 
 interface ParsedHotkey {
@@ -23,12 +24,17 @@ interface ParsedHotkey {
 export class HotkeyService extends EventEmitter {
   private config: HotkeyConfig;
   private isKeyDown = false;
+  private isCorrectionKeyDown = false;
   private parsedHotkey: ParsedHotkey;
+  private parsedCorrectionHotkey: ParsedHotkey | null = null;
 
   constructor(config: HotkeyConfig) {
     super();
     this.config = config;
     this.parsedHotkey = this.parseHotkey(this.getActiveHotkey());
+    if (config.correctSelectionKey) {
+      this.parsedCorrectionHotkey = this.parseHotkey(config.correctSelectionKey);
+    }
   }
 
   private getActiveHotkey(): string {
@@ -78,31 +84,42 @@ export class HotkeyService extends EventEmitter {
     return { keyCode, ctrl, shift, alt, meta };
   }
 
-  private matchesHotkey(event: UiohookKeyboardEvent): boolean {
-    // Check if the main key matches
-    if (event.keycode !== this.parsedHotkey.keyCode) {
-      return false;
-    }
-
-    // Check modifiers
-    if (this.parsedHotkey.ctrl !== event.ctrlKey) return false;
-    if (this.parsedHotkey.shift !== event.shiftKey) return false;
-    if (this.parsedHotkey.alt !== event.altKey) return false;
-    if (this.parsedHotkey.meta !== event.metaKey) return false;
-
+  private matchesParsedHotkey(event: UiohookKeyboardEvent, parsed: ParsedHotkey): boolean {
+    if (event.keycode !== parsed.keyCode) return false;
+    if (parsed.ctrl !== event.ctrlKey) return false;
+    if (parsed.shift !== event.shiftKey) return false;
+    if (parsed.alt !== event.altKey) return false;
+    if (parsed.meta !== event.metaKey) return false;
     return true;
+  }
+
+  private matchesHotkey(event: UiohookKeyboardEvent): boolean {
+    return this.matchesParsedHotkey(event, this.parsedHotkey);
+  }
+
+  private matchesCorrectionHotkey(event: UiohookKeyboardEvent): boolean {
+    if (!this.parsedCorrectionHotkey) return false;
+    return this.matchesParsedHotkey(event, this.parsedCorrectionHotkey);
   }
 
   public start(): void {
     console.log('[HotkeyService] Starting hotkey listener...');
     console.log('[HotkeyService] Active hotkey:', this.getActiveHotkey());
+    console.log('[HotkeyService] Correction hotkey:', this.config.correctSelectionKey || 'none');
     console.log('[HotkeyService] Activation mode:', this.config.activationMode);
 
     uIOhook.on('keydown', (event: UiohookKeyboardEvent) => {
+      // Check recording hotkey
       if (this.matchesHotkey(event) && !this.isKeyDown) {
         this.isKeyDown = true;
         console.log('[HotkeyService] Hotkey pressed:', this.getActiveHotkey());
         this.emit('keyDown');
+      }
+      // Check correction hotkey
+      if (this.matchesCorrectionHotkey(event) && !this.isCorrectionKeyDown) {
+        this.isCorrectionKeyDown = true;
+        console.log('[HotkeyService] Correction hotkey pressed:', this.config.correctSelectionKey);
+        this.emit('correctKeyDown');
       }
     });
 
@@ -112,6 +129,9 @@ export class HotkeyService extends EventEmitter {
         this.isKeyDown = false;
         console.log('[HotkeyService] Hotkey released:', this.getActiveHotkey());
         this.emit('keyUp');
+      }
+      if (this.parsedCorrectionHotkey && event.keycode === this.parsedCorrectionHotkey.keyCode && this.isCorrectionKeyDown) {
+        this.isCorrectionKeyDown = false;
       }
     });
 
@@ -127,7 +147,11 @@ export class HotkeyService extends EventEmitter {
   public updateHotkeys(config: HotkeyConfig): void {
     this.config = config;
     this.parsedHotkey = this.parseHotkey(this.getActiveHotkey());
+    if (config.correctSelectionKey) {
+      this.parsedCorrectionHotkey = this.parseHotkey(config.correctSelectionKey);
+    }
     console.log('[HotkeyService] Updated hotkey:', this.getActiveHotkey());
+    console.log('[HotkeyService] Updated correction hotkey:', config.correctSelectionKey || 'none');
   }
 
   public getActivationMode(): ActivationMode {

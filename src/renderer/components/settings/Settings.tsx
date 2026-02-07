@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import type { AppSettings, TranscriptionProvider, LLMProvider, ProcessingMode } from '../../../shared/types';
+import type { AppSettings, TranscriptionProvider, LLMProvider, ProcessingMode, TextCorrectionMode } from '../../../shared/types';
 import {
   Zap,
   Bot,
@@ -20,6 +20,13 @@ import {
   Settings as SettingsIcon,
   Loader2,
   Bug,
+  Type,
+  CheckCheck,
+  PenLine,
+  Briefcase,
+  Coffee,
+  Scissors,
+  Wrench,
 } from 'lucide-react';
 
 // Modern dark theme
@@ -201,7 +208,16 @@ const PROCESSING_MODES: { id: ProcessingMode; name: string; description: string;
   { id: 'polish', name: 'Polish', description: 'Full rewrite for clarity', icon: <Gem size={24} /> },
 ];
 
-type Section = 'transcription' | 'ai' | 'hotkeys' | 'audio' | 'general';
+const TEXT_CORRECTION_MODES: { id: TextCorrectionMode; name: string; description: string; icon: React.ReactNode }[] = [
+  { id: 'proofread', name: 'Proofread', description: 'Fix grammar & spelling only', icon: <CheckCheck size={24} /> },
+  { id: 'rewrite', name: 'Rewrite', description: 'Improve clarity & flow', icon: <PenLine size={24} /> },
+  { id: 'formal', name: 'Formal', description: 'Professional tone', icon: <Briefcase size={24} /> },
+  { id: 'casual', name: 'Casual', description: 'Conversational tone', icon: <Coffee size={24} /> },
+  { id: 'concise', name: 'Concise', description: 'Shorten while keeping meaning', icon: <Scissors size={24} /> },
+  { id: 'custom', name: 'Custom', description: 'Your own prompt', icon: <Wrench size={24} /> },
+];
+
+type Section = 'transcription' | 'ai' | 'textCorrection' | 'hotkeys' | 'audio' | 'general';
 
 interface AudioDevice {
   deviceId: string;
@@ -748,6 +764,8 @@ export function Settings() {
       save({ hotkeys: { ...settings.hotkeys, pushToTalkKey: hotkey } });
     } else if (recordingHotkey === 'toggle') {
       save({ hotkeys: { ...settings.hotkeys, toggleKey: hotkey } });
+    } else if (recordingHotkey === 'correctSelection') {
+      save({ hotkeys: { ...settings.hotkeys, correctSelectionKey: hotkey } });
     }
     setRecordingHotkey(null);
   }, [recordingHotkey, settings, save]);
@@ -855,6 +873,13 @@ export function Settings() {
             label="AI Processing"
             active={activeSection === 'ai'}
             onClick={() => setActiveSection('ai')}
+          />
+          <NavItem
+            icon={<Type size={18} />}
+            label="Text Correction"
+            active={activeSection === 'textCorrection'}
+            onClick={() => setActiveSection('textCorrection')}
+            badge="New"
           />
           <NavItem
             icon={<Keyboard size={18} />}
@@ -1070,6 +1095,163 @@ export function Settings() {
             </>
           )}
 
+          {/* Text Correction Section */}
+          {activeSection === 'textCorrection' && (
+            <>
+              <div style={{ marginBottom: '32px' }}>
+                <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0 }}>Text Correction</h1>
+                <p style={{ fontSize: '14px', color: theme.textMuted, marginTop: '8px' }}>
+                  Select text in any app and press{' '}
+                  <code style={{
+                    backgroundColor: theme.bgHover,
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    fontFamily: 'monospace',
+                  }}>{settings.hotkeys.correctSelectionKey}</code>
+                  {' '}to correct it with AI
+                </p>
+              </div>
+
+              <SectionCard title="Correction Mode" step={1}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                  {TEXT_CORRECTION_MODES.map(mode => (
+                    <ModeCard
+                      key={mode.id}
+                      mode={mode}
+                      selected={settings.textCorrectionMode === mode.id}
+                      onClick={() => save({ textCorrectionMode: mode.id })}
+                    />
+                  ))}
+                </div>
+              </SectionCard>
+
+              {settings.textCorrectionMode === 'custom' && (
+                <SectionCard title="Custom Prompt" step={2}>
+                  <p style={{ fontSize: '13px', color: theme.textMuted, marginBottom: '12px' }}>
+                    Write your own system prompt. The selected text will be appended automatically.
+                  </p>
+                  <textarea
+                    value={settings.textCorrectionCustomPrompt}
+                    onChange={(e) => save({ textCorrectionCustomPrompt: e.target.value })}
+                    placeholder='e.g., You are a medical writing assistant. Fix terminology and formatting while preserving clinical accuracy...'
+                    rows={6}
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px',
+                      backgroundColor: theme.bgHover,
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: '8px',
+                      color: theme.text,
+                      fontSize: '14px',
+                      fontFamily: 'inherit',
+                      resize: 'vertical',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  <div style={{ fontSize: '12px', color: theme.textDim, marginTop: '8px' }}>
+                    Tip: End with &quot;Return ONLY the corrected text, nothing else.&quot; for clean output.
+                  </div>
+                </SectionCard>
+              )}
+
+              <SectionCard title="Hotkey" step={settings.textCorrectionMode === 'custom' ? 3 : 2}>
+                <p style={{ fontSize: '13px', color: theme.textMuted, marginBottom: '16px' }}>
+                  Configure the hotkey in the{' '}
+                  <button
+                    onClick={() => setActiveSection('hotkeys')}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: theme.primary,
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      padding: 0,
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    Hotkeys
+                  </button>
+                  {' '}section
+                </p>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '16px',
+                  backgroundColor: theme.bgHover,
+                  borderRadius: '10px',
+                }}>
+                  <code style={{
+                    padding: '8px 14px',
+                    backgroundColor: theme.bgCard,
+                    borderRadius: '6px',
+                    fontFamily: 'monospace',
+                    fontSize: '14px',
+                    border: `1px solid ${theme.border}`,
+                  }}>
+                    {settings.hotkeys.correctSelectionKey}
+                  </code>
+                  <span style={{ fontSize: '13px', color: theme.textMuted }}>
+                    Select text, then press this to correct it
+                  </span>
+                </div>
+              </SectionCard>
+
+              <SectionCard title="How It Works">
+                <div style={{ fontSize: '13px', color: theme.textMuted, lineHeight: 1.7 }}>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '12px' }}>
+                    <span style={{ color: theme.primary, fontWeight: 600, minWidth: '20px' }}>1.</span>
+                    <span>Select text in any application</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '12px' }}>
+                    <span style={{ color: theme.primary, fontWeight: 600, minWidth: '20px' }}>2.</span>
+                    <span>Press <code style={{ backgroundColor: theme.bgHover, padding: '1px 4px', borderRadius: '3px', fontFamily: 'monospace' }}>{settings.hotkeys.correctSelectionKey}</code></span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '12px' }}>
+                    <span style={{ color: theme.primary, fontWeight: 600, minWidth: '20px' }}>3.</span>
+                    <span>AI corrects the text using your chosen mode</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                    <span style={{ color: theme.primary, fontWeight: 600, minWidth: '20px' }}>4.</span>
+                    <span>Corrected text replaces your selection</span>
+                  </div>
+                </div>
+              </SectionCard>
+
+              {settings.processingMode === 'raw' && (
+                <div style={{
+                  padding: '16px 20px',
+                  backgroundColor: theme.warning + '15',
+                  border: `1px solid ${theme.warning}40`,
+                  borderRadius: '10px',
+                  fontSize: '13px',
+                  color: theme.warning,
+                  lineHeight: 1.5,
+                }}>
+                  Text correction requires an LLM provider with an API key.
+                  Configure one in the{' '}
+                  <button
+                    onClick={() => setActiveSection('ai')}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: theme.warning,
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      padding: 0,
+                      textDecoration: 'underline',
+                      fontWeight: 600,
+                    }}
+                  >
+                    AI Processing
+                  </button>
+                  {' '}section.
+                </div>
+              )}
+            </>
+          )}
+
           {/* Hotkeys Section */}
           {activeSection === 'hotkeys' && (
             <>
@@ -1189,6 +1371,49 @@ export function Settings() {
                     Press to cancel the current recording
                   </span>
                 </div>
+              </SectionCard>
+
+              <SectionCard title="Text Correction Hotkey" step={4}>
+                <p style={{ fontSize: '13px', color: theme.textMuted, marginBottom: '16px' }}>
+                  Select text in any app and press this to correct it with AI
+                </p>
+                <div
+                  onClick={() => setRecordingHotkey('correctSelection')}
+                  style={{
+                    padding: '16px 20px',
+                    backgroundColor: theme.bgHover,
+                    border: `2px solid ${recordingHotkey === 'correctSelection' ? theme.primary : theme.border}`,
+                    borderRadius: '10px',
+                    fontFamily: 'monospace',
+                    fontSize: '16px',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                    color: recordingHotkey === 'correctSelection' ? theme.primary : theme.text,
+                  }}
+                >
+                  {recordingHotkey === 'correctSelection'
+                    ? 'Press any key...'
+                    : settings.hotkeys.correctSelectionKey
+                  }
+                </div>
+                {recordingHotkey === 'correctSelection' && (
+                  <button
+                    onClick={() => setRecordingHotkey(null)}
+                    style={{
+                      marginTop: '12px',
+                      padding: '8px 16px',
+                      backgroundColor: 'transparent',
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: '6px',
+                      color: theme.textMuted,
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Cancel
+                  </button>
+                )}
               </SectionCard>
             </>
           )}

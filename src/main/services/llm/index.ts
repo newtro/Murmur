@@ -92,6 +92,31 @@ export class LLMService {
     };
   }
 
+  /**
+   * Send a raw prompt to the specified provider and return the completion text.
+   * Used by text correction to send custom prompts directly.
+   */
+  async completeRaw(prompt: string, provider: LLMProvider, model: string): Promise<string> {
+    console.log(`[LLMService] Raw completion with ${provider}/${model}`);
+
+    switch (provider) {
+      case 'openai':
+        return this.openaiProvider.complete(prompt, model);
+      case 'anthropic':
+        return this.anthropicProvider.complete(prompt, model);
+      case 'gemini':
+        return this.geminiProvider.complete(prompt, model);
+      case 'groq':
+        return this.groqProvider.complete(prompt, model);
+      case 'ollama':
+        return this.ollamaProvider.complete(prompt, model);
+      case 'mistral':
+        return this.mistralProvider.complete(prompt, model);
+      default:
+        throw new Error(`Unknown LLM provider: ${provider}`);
+    }
+  }
+
   updateApiKeys(apiKeys: ApiKeys): void {
     this.apiKeys = apiKeys;
     this.openaiProvider.updateApiKey(apiKeys.openai);

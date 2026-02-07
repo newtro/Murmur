@@ -58,13 +58,28 @@ export function createOverlayWindow(): BrowserWindow {
     overlayWindow.hide();
   });
 
+  // Debug: log load failures
+  overlayWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    console.error('[Overlay] Failed to load:', { errorCode, errorDescription, validatedURL });
+  });
+
+  overlayWindow.webContents.on('did-finish-load', () => {
+    console.log('[Overlay] Successfully loaded');
+  });
+
+  overlayWindow.webContents.on('console-message', (_event, level, message) => {
+    console.log(`[Overlay Console] [${level}] ${message}`);
+  });
+
   // Load the overlay HTML
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    overlayWindow.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}/overlay.html`);
+    const url = `${MAIN_WINDOW_VITE_DEV_SERVER_URL}/overlay.html`;
+    console.log('[Overlay] Loading URL:', url);
+    overlayWindow.loadURL(url);
   } else {
-    overlayWindow.loadFile(
-      path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/overlay.html`)
-    );
+    const filePath = path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/overlay.html`);
+    console.log('[Overlay] Loading file:', filePath);
+    overlayWindow.loadFile(filePath);
   }
 
   return overlayWindow;

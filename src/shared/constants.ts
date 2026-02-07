@@ -35,6 +35,15 @@ export const KEY_CODES: Record<string, number> = {
   ControlRight: 3613,
   AltLeft: 56,
   AltRight: 3640,
+  // Letter keys
+  A: 30, B: 48, C: 46, D: 32, E: 18, F: 33, G: 34, H: 35, I: 23, J: 36,
+  K: 37, L: 38, M: 50, N: 49, O: 24, P: 25, Q: 16, R: 19, S: 31, T: 20,
+  U: 22, V: 47, W: 17, X: 45, Y: 21, Z: 44,
+  // Number keys
+  '0': 11, '1': 2, '2': 3, '3': 4, '4': 5, '5': 6, '6': 7, '7': 8, '8': 9, '9': 10,
+  // Punctuation
+  Semicolon: 39, Period: 52, Comma: 51, Slash: 53, Backslash: 43,
+  BracketLeft: 26, BracketRight: 27, Minus: 12, Equal: 13, Quote: 40,
 };
 
 // Audio Settings
@@ -67,6 +76,54 @@ Return ONLY the cleaned text, nothing else.`,
 6. Make it sound natural and professional
 
 Return ONLY the polished text, nothing else.`,
+};
+
+// Text Correction Prompts (Grammarly-style modes for selected text)
+export const TEXT_CORRECTION_PROMPTS: Record<string, string> = {
+  proofread: `You are a proofreading assistant. Your task is to:
+1. Fix spelling errors
+2. Fix grammar and punctuation errors
+3. Make minimal changes - only correct actual mistakes
+4. Preserve the original tone, style, and word choices
+5. Do NOT rephrase or restructure sentences unless grammatically necessary
+
+Return ONLY the corrected text, nothing else.`,
+
+  rewrite: `You are a writing assistant. Your task is to:
+1. Rewrite the text for clarity and better flow
+2. Fix all grammar, spelling, and punctuation errors
+3. Improve sentence structure where needed
+4. Maintain the original meaning and intent
+5. Make it sound natural and well-written
+
+Return ONLY the rewritten text, nothing else.`,
+
+  formal: `You are a professional writing assistant. Your task is to:
+1. Rewrite the text in a formal, professional tone
+2. Use proper grammar, spelling, and punctuation
+3. Avoid contractions and casual language
+4. Use business-appropriate vocabulary
+5. Maintain the original meaning and intent
+
+Return ONLY the formal text, nothing else.`,
+
+  casual: `You are a writing assistant. Your task is to:
+1. Rewrite the text in a casual, conversational tone
+2. Fix any grammar and spelling errors
+3. Use contractions and natural language
+4. Keep it friendly and approachable
+5. Maintain the original meaning and intent
+
+Return ONLY the casual text, nothing else.`,
+
+  concise: `You are a concise writing assistant. Your task is to:
+1. Shorten the text while preserving the exact meaning
+2. Remove redundancy, filler words, and unnecessary qualifiers
+3. Use active voice where possible
+4. Fix any grammar and spelling errors
+5. Aim for roughly 50-70% of the original length
+
+Return ONLY the shortened text, nothing else.`,
 };
 
 // Supported Languages

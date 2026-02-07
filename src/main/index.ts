@@ -12,6 +12,7 @@ import { TranscriptionService } from './services/transcription';
 import { LLMService } from './services/llm';
 import { PasteService } from './services/paste';
 import { IPC_CHANNELS } from '../shared/ipc-channels';
+import { TEXT_CORRECTION_PROMPTS } from '../shared/constants';
 import { OverlayState, AppSettings, DEFAULT_SETTINGS, AudioLevel } from '../shared/types';
 
 // ============================================================================
@@ -28,6 +29,7 @@ let llmService: LLMService | null = null;
 let pasteService: PasteService | null = null;
 
 let isRecording = false;
+let isCorrectingText = false;
 let currentState: OverlayState = 'idle';
 let pendingAudioResolve: ((buffer: Buffer) => void) | null = null;
 let pendingAudioReject: ((error: Error) => void) | null = null;
@@ -89,10 +91,12 @@ function createAndShowSettingsWindow() {
 
 function updateOverlayState(state: OverlayState, data?: Record<string, unknown>) {
   currentState = state;
+  console.log('[Murmur] updateOverlayState:', state, 'overlayWindow exists:', !!overlayWindow, 'destroyed:', overlayWindow?.isDestroyed());
   if (overlayWindow && !overlayWindow.isDestroyed()) {
     overlayWindow.webContents.send(IPC_CHANNELS.OVERLAY_UPDATE, { state, ...data });
 
     if (state === 'listening') {
+      console.log('[Murmur] Showing overlay window, bounds:', overlayWindow.getBounds());
       overlayWindow.show();
     } else if (state === 'idle') {
       overlayWindow.hide();
@@ -217,6 +221,97 @@ function cancelRecording() {
   }
 
   updateOverlayState('idle');
+}
+
+// ============================================================================
+// Text Correction Flow
+// ============================================================================
+
+async function correctSelectedText() {
+  if (isCorrectingText || isRecording) return;
+  isCorrectingText = true;
+
+  console.log('[Murmur] Starting text correction...');
+  updateOverlayState('processing');
+
+  let previousClipboard = '';
+
+  try {
+    // Copy the selected text
+    const result = await pasteService!.copySelection();
+    previousClipboard = result.previousClipboard;
+    const selectedText = result.selectedText;
+
+    if (!selectedText || selectedText.trim().length === 0) {
+      console.log('[Murmur] No text selected, aborting correction');
+      updateOverlayState('error', { error: 'No text selected' });
+      setTimeout(() => updateOverlayState('idle'), 2000);
+      isCorrectingText = false;
+      return;
+    }
+
+    console.log('[Murmur] Correcting text:', selectedText.substring(0, 50) + '...');
+
+    const settings = getSettings();
+
+    // Build the correction prompt
+    let prompt: string;
+    if (settings.textCorrectionMode === 'custom' && settings.textCorrectionCustomPrompt) {
+      prompt = settings.textCorrectionCustomPrompt;
+    } else {
+      prompt = TEXT_CORRECTION_PROMPTS[settings.textCorrectionMode] || TEXT_CORRECTION_PROMPTS.proofread;
+    }
+
+    const fullPrompt = `${prompt}\n\nText to process:\n${selectedText}`;
+
+    // Check for API key
+    const hasApiKey = settings.llmProvider === 'ollama' ||
+      (settings.llmProvider in settings.apiKeys && settings.apiKeys[settings.llmProvider as keyof typeof settings.apiKeys]);
+
+    if (!hasApiKey) {
+      throw new Error('No API key configured for LLM provider');
+    }
+
+    // Process with LLM (using same provider/model as voice processing)
+    console.log('[Murmur] Processing correction with LLM...');
+    if (!llmService) {
+      throw new Error('LLM service not initialized');
+    }
+    const correctedText = await llmService.completeRaw(fullPrompt, settings.llmProvider, settings.llmModel);
+
+    console.log('[Murmur] Correction complete, pasting...');
+
+    // Paste the corrected text (replaces the selected text)
+    await pasteService?.paste(correctedText);
+
+    // Wait a bit then restore clipboard
+    await new Promise(resolve => setTimeout(resolve, 200));
+    pasteService?.restoreClipboard(previousClipboard);
+
+    const wordCount = correctedText.split(/\s+/).filter(Boolean).length;
+    updateOverlayState('complete', { wordCount });
+
+    setTimeout(() => {
+      updateOverlayState('idle');
+    }, 1500);
+
+  } catch (error) {
+    console.error('[Murmur] Text correction error:', error);
+    updateOverlayState('error', {
+      error: error instanceof Error ? error.message : 'Correction failed'
+    });
+
+    // Restore clipboard on error
+    if (previousClipboard) {
+      pasteService?.restoreClipboard(previousClipboard);
+    }
+
+    setTimeout(() => {
+      updateOverlayState('idle');
+    }, 3000);
+  } finally {
+    isCorrectingText = false;
+  }
 }
 
 // ============================================================================
@@ -399,6 +494,9 @@ async function initializeServices() {
     if (currentSettings.hotkeys.activationMode === 'push-to-talk' && isRecording) {
       stopRecording();
     }
+  });
+  hotkeyService.on('correctKeyDown', () => {
+    correctSelectedText();
   });
   hotkeyService.start();
 }

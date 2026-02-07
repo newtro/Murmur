@@ -6,6 +6,7 @@
 export type TranscriptionProvider = 'whisper-local' | 'groq' | 'openai' | 'mistral';
 export type LLMProvider = 'openai' | 'anthropic' | 'gemini' | 'groq' | 'ollama' | 'mistral';
 export type ProcessingMode = 'raw' | 'clean' | 'polish';
+export type TextCorrectionMode = 'proofread' | 'rewrite' | 'formal' | 'casual' | 'concise' | 'custom';
 export type ActivationMode = 'push-to-talk' | 'toggle';
 
 // Overlay States
@@ -32,6 +33,7 @@ export interface HotkeyConfig {
   pushToTalkKey: string;
   toggleKey: string;
   cancelKey: string;
+  correctSelectionKey: string;
   activationMode: ActivationMode;
 }
 
@@ -61,6 +63,10 @@ export interface AppSettings {
   overlayPosition: { x: number; y: number } | null;
   theme: 'light' | 'dark' | 'system';
 
+  // Text Correction
+  textCorrectionMode: TextCorrectionMode;
+  textCorrectionCustomPrompt: string;
+
   // System
   launchAtStartup: boolean;
 }
@@ -81,6 +87,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     pushToTalkKey: 'Backquote',
     toggleKey: 'F2',
     cancelKey: 'Escape',
+    correctSelectionKey: 'Ctrl+Shift+G',
     activationMode: 'push-to-talk',
   },
 
@@ -88,6 +95,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
   overlayPosition: null,
   theme: 'dark',
+
+  textCorrectionMode: 'proofread',
+  textCorrectionCustomPrompt: '',
 
   launchAtStartup: false,
 };

@@ -110,6 +110,28 @@ function updateOverlayState(state: OverlayState, data?: Record<string, unknown>)
 
 async function startRecording() {
   if (isRecording) return;
+
+  // Check for transcription API key before starting
+  const settings = getSettings();
+  if (settings.transcriptionProvider !== 'whisper-local') {
+    const hasTranscriptionKey = settings.transcriptionProvider in settings.apiKeys &&
+      settings.apiKeys[settings.transcriptionProvider as keyof typeof settings.apiKeys];
+    if (!hasTranscriptionKey) {
+      const result = await dialog.showMessageBox({
+        type: 'info',
+        title: 'API Key Required',
+        message: 'Voice transcription requires an API key.',
+        detail: `Please configure an API key for ${settings.transcriptionProvider} in Settings. We recommend Mistral AI which offers a free tier.`,
+        buttons: ['Open Settings', 'Cancel'],
+        defaultId: 0,
+      });
+      if (result.response === 0) {
+        createAndShowSettingsWindow();
+      }
+      return;
+    }
+  }
+
   isRecording = true;
 
   console.log('[Murmur] Starting recording...');

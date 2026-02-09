@@ -9,7 +9,41 @@ permissions:
   contents: write
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.calc.outputs.version }}
+      tag: ${{ steps.calc.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history for tags
+
+      - name: Calculate next version
+        id: calc
+        run: |
+          # Get the highest existing version tag (strips v prefix and any -suffix)
+          LATEST=$(git tag -l 'v*' | sed 's/^v//' | sed 's/-.*//' | sort -V | tail -1)
+
+          if [ -z "$LATEST" ]; then
+            # No tags yet, start from package.json version
+            VERSION=$(node -p "require('./package.json').version")
+          else
+            # Increment patch version
+            MAJOR=$(echo "$LATEST" | cut -d. -f1)
+            MINOR=$(echo "$LATEST" | cut -d. -f2)
+            PATCH=$(echo "$LATEST" | cut -d. -f3)
+            PATCH=$((PATCH + 1))
+            VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          fi
+
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
+          echo "Next version: ${VERSION}"
+
   build:
+    needs: version
     strategy:
       fail-fast: false
       matrix:
@@ -45,6 +79,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Set version
+        run: npm version ${{ needs.version.outputs.version }} --no-git-tag-version --allow-same-version
+        shell: bash
+
+      - name: Update MSIX manifest version
+        if: matrix.platform == 'win32'
+        run: |
+          $version = "${{ needs.version.outputs.version }}.0"
+          (Get-Content resources/AppxManifest.xml) -replace 'Version="[^"]*"', "Version=`"$version`"" | Set-Content resources/AppxManifest.xml
+          Write-Host "Set MSIX version to $version"
+        shell: pwsh
+
       - name: Build and Make
         run: npm run make -- --arch=${{ matrix.arch }}
         env:
@@ -64,7 +110,7 @@ jobs:
           if-no-files-found: error
 
   release:
-    needs: build
+    needs: [version, build]
     runs-on: ubuntu-latest
 
     steps:
@@ -77,14 +123,6 @@ jobs:
           path: artifacts
           merge-multiple: true
 
-      - name: Get version
-        id: version
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          echo "version=${VERSION}+${SHORT_SHA}" >> $GITHUB_OUTPUT
-          echo "tag=v${VERSION}-${SHORT_SHA}" >> $GITHUB_OUTPUT
-
       - name: List artifacts
         run: |
           echo "=== All artifacts ==="
@@ -93,8 +131,8 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: Murmur ${{ steps.version.outputs.version }}
+          tag_name: ${{ needs.version.outputs.tag }}
+          name: Murmur ${{ needs.version.outputs.version }}
           draft: false
           prerelease: false
           generate_release_notes: true

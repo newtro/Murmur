@@ -107,6 +107,7 @@ const config: ForgeConfig = {
     new MakerMSIX({
       appManifest: path.resolve(__dirname, 'resources/AppxManifest.xml'),
       packageAssets: path.resolve(__dirname, 'resources/msix-assets'),
+      windowsKitVersion: '10.0.26100.0', // Build SDK version (independent of manifest MinVersion)
       sign: false, // Microsoft signs MSIX packages submitted to the Store
     }),
     new MakerZIP({}, ['darwin', 'linux', 'win32']),

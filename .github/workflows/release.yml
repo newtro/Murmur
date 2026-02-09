@@ -86,10 +86,15 @@ jobs:
       - name: Update MSIX manifest version
         if: matrix.platform == 'win32'
         run: |
-          $version = "${{ needs.version.outputs.version }}.0"
-          (Get-Content resources/AppxManifest.xml) -replace 'Version="[^"]*"', "Version=`"$version`"" | Set-Content resources/AppxManifest.xml
-          Write-Host "Set MSIX version to $version"
-        shell: pwsh
+          node -e "
+            const fs = require('fs');
+            const v = '${{ needs.version.outputs.version }}.0';
+            let xml = fs.readFileSync('resources/AppxManifest.xml', 'utf8');
+            xml = xml.replace(/([\s])Version=\"[\d.]+\"/,  \`\$1Version=\"\${v}\"\`);
+            fs.writeFileSync('resources/AppxManifest.xml', xml, 'utf8');
+            console.log('Set MSIX version to ' + v);
+          "
+        shell: bash
 
       - name: Build and Make
         run: npm run make -- --arch=${{ matrix.arch }}

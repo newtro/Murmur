@@ -2,7 +2,7 @@
 // Murmur - Main Process Entry Point
 // ============================================================================
 
-import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } from 'electron';
+import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, dialog } from 'electron';
 import * as path from 'path';
 import { createOverlayWindow } from './windows/overlay';
 import { createSettingsWindow } from './windows/settings';
@@ -269,7 +269,24 @@ async function correctSelectedText() {
       (settings.llmProvider in settings.apiKeys && settings.apiKeys[settings.llmProvider as keyof typeof settings.apiKeys]);
 
     if (!hasApiKey) {
-      throw new Error('No API key configured for LLM provider');
+      updateOverlayState('idle');
+      isCorrectingText = false;
+      // Restore clipboard before showing dialog
+      if (previousClipboard) {
+        pasteService?.restoreClipboard(previousClipboard);
+      }
+      const result = await dialog.showMessageBox({
+        type: 'info',
+        title: 'API Key Required',
+        message: 'Text Correction requires an LLM API key.',
+        detail: 'Please configure an API key in Settings to use this feature. We recommend Mistral AI which offers a free tier.',
+        buttons: ['Open Settings', 'Cancel'],
+        defaultId: 0,
+      });
+      if (result.response === 0) {
+        createAndShowSettingsWindow();
+      }
+      return;
     }
 
     // Process with LLM (using same provider/model as voice processing)
@@ -277,7 +294,14 @@ async function correctSelectedText() {
     if (!llmService) {
       throw new Error('LLM service not initialized');
     }
-    const correctedText = await llmService.completeRaw(fullPrompt, settings.llmProvider, settings.llmModel);
+    let correctedText = await llmService.completeRaw(fullPrompt, settings.llmProvider, settings.llmModel);
+
+    // Strip common LLM preamble patterns (e.g. "Here's the corrected text:\n\n")
+    correctedText = correctedText.replace(/^(?:Here(?:'s| is) (?:the |your )?(?:corrected|rewritten|revised|formal|casual|shortened|concise|proofread|updated|improved|polished|edited)[\w ]*?(?:text|version)?[:\-\s]*\n+)/i, '');
+    // Strip wrapping quotes if the LLM wrapped the entire output in them
+    if (/^[""].*[""]$/s.test(correctedText.trim())) {
+      correctedText = correctedText.trim().slice(1, -1);
+    }
 
     console.log('[Murmur] Correction complete, pasting...');
 

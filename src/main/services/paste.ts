@@ -95,12 +95,46 @@ export class PasteService {
           resolve();
         } else {
           console.error('[PasteService] PowerShell Ctrl+C error:', stderr);
-          reject(new Error('Failed to simulate Ctrl+C'));
+          // Try VBScript fallback
+          this.sendCtrlCVbscript().then(resolve).catch(reject);
         }
       });
 
       ps.on('error', (err) => {
         console.error('[PasteService] PowerShell spawn error:', err);
+        // Try VBScript fallback
+        this.sendCtrlCVbscript().then(resolve).catch(reject);
+      });
+    });
+  }
+
+  /**
+   * Fallback: Send Ctrl+C using VBScript
+   */
+  private sendCtrlCVbscript(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const vbs = spawn('cscript', [
+        '//NoLogo',
+        '//E:VBScript',
+        '//'
+      ], {
+        windowsHide: true
+      });
+
+      // Write VBScript to stdin
+      vbs.stdin.write('Set WshShell = WScript.CreateObject("WScript.Shell")\n');
+      vbs.stdin.write('WshShell.SendKeys "^c"\n');
+      vbs.stdin.end();
+
+      vbs.on('close', (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error('VBScript SendKeys Ctrl+C failed'));
+        }
+      });
+
+      vbs.on('error', (err) => {
         reject(err);
       });
     });

@@ -95,11 +95,11 @@ function updateOverlayState(state: OverlayState, data?: Record<string, unknown>)
   if (overlayWindow && !overlayWindow.isDestroyed()) {
     overlayWindow.webContents.send(IPC_CHANNELS.OVERLAY_UPDATE, { state, ...data });
 
-    if (state === 'listening') {
-      console.log('[Murmur] Showing overlay window, bounds:', overlayWindow.getBounds());
-      overlayWindow.show();
-    } else if (state === 'idle') {
+    if (state === 'idle') {
       overlayWindow.hide();
+    } else {
+      console.log('[Murmur] Showing overlay window, bounds:', overlayWindow.getBounds());
+      overlayWindow.showInactive();
     }
   }
 }
@@ -316,14 +316,7 @@ async function correctSelectedText() {
     if (!llmService) {
       throw new Error('LLM service not initialized');
     }
-    let correctedText = await llmService.completeRaw(fullPrompt, settings.llmProvider, settings.llmModel);
-
-    // Strip common LLM preamble patterns (e.g. "Here's the corrected text:\n\n")
-    correctedText = correctedText.replace(/^(?:Here(?:'s| is) (?:the |your )?(?:corrected|rewritten|revised|formal|casual|shortened|concise|proofread|updated|improved|polished|edited)[\w ]*?(?:text|version)?[:\-\s]*\n+)/i, '');
-    // Strip wrapping quotes if the LLM wrapped the entire output in them
-    if (/^[""].*[""]$/s.test(correctedText.trim())) {
-      correctedText = correctedText.trim().slice(1, -1);
-    }
+    const correctedText = await llmService.completeRawJson(fullPrompt, settings.llmProvider, settings.llmModel);
 
     console.log('[Murmur] Correction complete, pasting...');
 

@@ -11,6 +11,40 @@ import { GroqLLMProvider } from './groq';
 import { OllamaLLMProvider } from './ollama';
 import { MistralLLMProvider } from './mistral';
 
+/** Regex to strip common LLM preamble patterns */
+const PREAMBLE_REGEX = /^(?:Here(?:'s| is) (?:the |your )?(?:corrected|rewritten|revised|formal|casual|shortened|concise|proofread|updated|improved|polished|edited|cleaned|clean|processed)[\w ]*?(?:text|version|output)?[:\-\s]*\n+)/i;
+
+/**
+ * Try to extract text from a JSON response like {"text": "..."}.
+ * Returns the extracted text, or null if parsing fails.
+ */
+function extractJsonText(raw: string): string | null {
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed.text === 'string') {
+      return parsed.text;
+    }
+  } catch {
+    // Not valid JSON — fall through
+  }
+  return null;
+}
+
+/**
+ * Strip preamble and wrapping quotes from raw LLM output.
+ * Used as a fallback when JSON parsing fails.
+ */
+function stripPreamble(text: string): string {
+  let result = text.replace(PREAMBLE_REGEX, '');
+
+  // Strip wrapping quotes if the LLM wrapped the entire output in them
+  if (/^[""].*[""]$/s.test(result.trim())) {
+    result = result.trim().slice(1, -1);
+  }
+
+  return result;
+}
+
 interface ProcessOptions {
   provider: LLMProvider;
   model: string;
@@ -36,6 +70,56 @@ export class LLMService {
     this.mistralProvider = new MistralLLMProvider(apiKeys.mistral);
   }
 
+  /**
+   * Complete a prompt using JSON mode for the given provider.
+   * Falls back to regular completion if JSON mode fails.
+   */
+  private async completeWithJsonMode(prompt: string, provider: LLMProvider, model: string): Promise<string> {
+    let rawJson: string;
+
+    try {
+      switch (provider) {
+        case 'openai':
+          rawJson = await this.openaiProvider.completeJson(prompt, model);
+          break;
+        case 'anthropic':
+          rawJson = await this.anthropicProvider.completeJson(prompt, model);
+          break;
+        case 'gemini':
+          rawJson = await this.geminiProvider.completeJson(prompt, model);
+          break;
+        case 'groq':
+          rawJson = await this.groqProvider.completeJson(prompt, model);
+          break;
+        case 'ollama':
+          rawJson = await this.ollamaProvider.completeJson(prompt, model);
+          break;
+        case 'mistral':
+          rawJson = await this.mistralProvider.completeJson(prompt, model);
+          break;
+        default:
+          throw new Error(`Unknown LLM provider: ${provider}`);
+      }
+
+      // Try to extract text from JSON
+      const extracted = extractJsonText(rawJson);
+      if (extracted !== null) {
+        console.log(`[LLMService] Successfully extracted text from JSON response`);
+        return extracted;
+      }
+
+      // JSON mode returned something but it wasn't parseable — strip preamble as fallback
+      console.warn(`[LLMService] JSON mode response was not valid JSON, falling back to preamble stripping`);
+      return stripPreamble(rawJson);
+    } catch (error) {
+      // JSON mode itself failed (e.g. provider doesn't support it for this model) —
+      // fall back to regular completion + preamble stripping
+      console.warn(`[LLMService] JSON mode failed for ${provider}, falling back to regular completion:`, error);
+      const raw = await this.completeRaw(prompt, provider, model);
+      return stripPreamble(raw);
+    }
+  }
+
   async process(text: string, options: ProcessOptions): Promise<LLMResult> {
     const { provider, model, processingMode } = options;
 
@@ -53,36 +137,7 @@ export class LLMService {
 
     console.log(`[LLMService] Processing with ${provider}/${model} in ${processingMode} mode`);
 
-    let processedText: string;
-
-    switch (provider) {
-      case 'openai':
-        processedText = await this.openaiProvider.complete(fullPrompt, model);
-        break;
-
-      case 'anthropic':
-        processedText = await this.anthropicProvider.complete(fullPrompt, model);
-        break;
-
-      case 'gemini':
-        processedText = await this.geminiProvider.complete(fullPrompt, model);
-        break;
-
-      case 'groq':
-        processedText = await this.groqProvider.complete(fullPrompt, model);
-        break;
-
-      case 'ollama':
-        processedText = await this.ollamaProvider.complete(fullPrompt, model);
-        break;
-
-      case 'mistral':
-        processedText = await this.mistralProvider.complete(fullPrompt, model);
-        break;
-
-      default:
-        throw new Error(`Unknown LLM provider: ${provider}`);
-    }
+    const processedText = await this.completeWithJsonMode(fullPrompt, provider, model);
 
     return {
       originalText: text,
@@ -115,6 +170,15 @@ export class LLMService {
       default:
         throw new Error(`Unknown LLM provider: ${provider}`);
     }
+  }
+
+  /**
+   * Send a raw prompt using JSON mode, with extraction and fallback.
+   * Used by text correction to get clean output.
+   */
+  async completeRawJson(prompt: string, provider: LLMProvider, model: string): Promise<string> {
+    console.log(`[LLMService] Raw JSON completion with ${provider}/${model}`);
+    return this.completeWithJsonMode(prompt, provider, model);
   }
 
   updateApiKeys(apiKeys: ApiKeys): void {

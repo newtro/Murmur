@@ -36,4 +36,21 @@ export class OpenAILLMProvider {
 
     return response.choices[0]?.message?.content || '';
   }
+
+  async completeJson(prompt: string, model: string): Promise<string> {
+    if (!this.client) {
+      throw new Error('OpenAI API key not configured');
+    }
+
+    const actualModel = model || 'gpt-4o-mini';
+
+    const response = await this.client.chat.completions.create({
+      model: actualModel,
+      messages: [{ role: 'user', content: prompt }],
+      max_completion_tokens: 4096,
+      response_format: { type: 'json_object' },
+    });
+
+    return response.choices[0]?.message?.content || '';
+  }
 }

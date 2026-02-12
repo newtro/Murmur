@@ -35,4 +35,20 @@ export class GroqLLMProvider {
 
     return response.choices[0]?.message?.content || '';
   }
+
+  async completeJson(prompt: string, model: string): Promise<string> {
+    if (!this.client) {
+      throw new Error('Groq API key not configured');
+    }
+
+    const response = await this.client.chat.completions.create({
+      model: model || 'llama-3.3-70b-versatile',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 4096,
+      temperature: 0.3,
+      response_format: { type: 'json_object' },
+    });
+
+    return response.choices[0]?.message?.content || '';
+  }
 }

@@ -40,6 +40,31 @@ export class AnthropicLLMProvider {
     return '';
   }
 
+  async completeJson(prompt: string, model: string): Promise<string> {
+    if (!this.client) {
+      throw new Error('Anthropic API key not configured');
+    }
+
+    // Anthropic doesn't have a native JSON mode, but we can use a prefilled
+    // assistant turn to force the model to start its response with valid JSON.
+    const response = await this.client.messages.create({
+      model: model || 'claude-haiku-4-5-20251001',
+      max_tokens: 4096,
+      messages: [
+        { role: 'user', content: prompt },
+        { role: 'assistant', content: '{"text": "' },
+      ],
+    });
+
+    const content = response.content[0];
+    if (content.type === 'text') {
+      // The model continues from '{"text": "' so we need to prepend it
+      return '{"text": "' + content.text;
+    }
+
+    return '';
+  }
+
   async validateKey(apiKey: string): Promise<{ valid: boolean; error?: string }> {
     try {
       const testClient = new Anthropic({ apiKey });

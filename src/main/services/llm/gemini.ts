@@ -33,6 +33,23 @@ export class GeminiLLMProvider {
     return response.text();
   }
 
+  async completeJson(prompt: string, model: string): Promise<string> {
+    if (!this.client) {
+      throw new Error('Gemini API key not configured');
+    }
+
+    const genModel = this.client.getGenerativeModel({
+      model: model || 'gemini-2.5-flash',
+      generationConfig: {
+        responseMimeType: 'application/json',
+      },
+    });
+    const result = await genModel.generateContent(prompt);
+    const response = await result.response;
+
+    return response.text();
+  }
+
   async validateKey(apiKey: string): Promise<{ valid: boolean; error?: string }> {
     try {
       const testClient = new GoogleGenerativeAI(apiKey);

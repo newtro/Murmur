@@ -21,6 +21,17 @@ export class OllamaLLMProvider {
     return response.response;
   }
 
+  async completeJson(prompt: string, model: string): Promise<string> {
+    const response = await this.client.generate({
+      model: model || 'llama3.2',
+      prompt,
+      stream: false,
+      format: 'json',
+    });
+
+    return response.response;
+  }
+
   async listModels(): Promise<string[]> {
     try {
       const response = await this.client.list();

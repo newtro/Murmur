@@ -65,7 +65,9 @@ export const PROCESSING_PROMPTS = {
 4. Keep the original meaning and tone intact
 5. Do NOT add or remove substantive content
 
-Return ONLY the cleaned text, nothing else.`,
+CRITICAL: Output ONLY the cleaned text. Do NOT include any preamble, labels, quotes, or explanation such as "Here's the cleaned text". Just output the text directly.
+
+Respond with JSON: {"text": "your cleaned text here"}`,
 
   polish: `You are a professional writing assistant. Your task is to:
 1. Remove all filler words and verbal tics
@@ -75,30 +77,42 @@ Return ONLY the cleaned text, nothing else.`,
 5. Maintain the speaker's voice and intent
 6. Make it sound natural and professional
 
-Return ONLY the polished text, nothing else.`,
+CRITICAL: Output ONLY the polished text. Do NOT include any preamble, labels, quotes, or explanation such as "Here's the polished text". Just output the text directly.
+
+Respond with JSON: {"text": "your polished text here"}`,
 };
 
 // Text Correction Prompts (Grammarly-style modes for selected text)
 export const TEXT_CORRECTION_PROMPTS: Record<string, string> = {
   proofread: `Fix spelling, grammar, and punctuation errors in the following text. Make minimal changes - only correct actual mistakes. Preserve the original tone, style, and word choices. Do NOT rephrase or restructure sentences unless grammatically necessary.
 
-CRITICAL: Output ONLY the corrected text. Do NOT include any preamble, labels, quotes, or explanation such as "Here's the corrected text". Just output the text directly.`,
+CRITICAL: Output ONLY the corrected text. Do NOT include any preamble, labels, quotes, or explanation such as "Here's the corrected text". Just output the text directly.
+
+Respond with JSON: {"text": "your corrected text here"}`,
 
   rewrite: `Rewrite the following text for clarity and better flow. Fix all grammar, spelling, and punctuation errors. Improve sentence structure where needed. Maintain the original meaning and intent.
 
-CRITICAL: Output ONLY the rewritten text. Do NOT include any preamble, labels, quotes, or explanation such as "Here's the rewritten text". Just output the text directly.`,
+CRITICAL: Output ONLY the rewritten text. Do NOT include any preamble, labels, quotes, or explanation such as "Here's the rewritten text". Just output the text directly.
+
+Respond with JSON: {"text": "your rewritten text here"}`,
 
   formal: `Rewrite the following text in a formal, professional tone. Use proper grammar, spelling, and punctuation. Avoid contractions and casual language. Use business-appropriate vocabulary. Maintain the original meaning and intent.
 
-CRITICAL: Output ONLY the formal text. Do NOT include any preamble, labels, quotes, or explanation such as "Here's the formal version". Just output the text directly.`,
+CRITICAL: Output ONLY the formal text. Do NOT include any preamble, labels, quotes, or explanation such as "Here's the formal version". Just output the text directly.
+
+Respond with JSON: {"text": "your formal text here"}`,
 
   casual: `Rewrite the following text in a casual, conversational tone. Fix any grammar and spelling errors. Use contractions and natural language. Keep it friendly and approachable. Maintain the original meaning and intent.
 
-CRITICAL: Output ONLY the casual text. Do NOT include any preamble, labels, quotes, or explanation such as "Here's the casual version". Just output the text directly.`,
+CRITICAL: Output ONLY the casual text. Do NOT include any preamble, labels, quotes, or explanation such as "Here's the casual version". Just output the text directly.
+
+Respond with JSON: {"text": "your casual text here"}`,
 
   concise: `Shorten the following text while preserving the exact meaning. Remove redundancy, filler words, and unnecessary qualifiers. Use active voice where possible. Fix any grammar and spelling errors. Aim for roughly 50-70% of the original length.
 
-CRITICAL: Output ONLY the shortened text. Do NOT include any preamble, labels, quotes, or explanation such as "Here's the shortened text". Just output the text directly.`,
+CRITICAL: Output ONLY the shortened text. Do NOT include any preamble, labels, quotes, or explanation such as "Here's the shortened text". Just output the text directly.
+
+Respond with JSON: {"text": "your shortened text here"}`,
 };
 
 // Supported Languages

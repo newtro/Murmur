@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { AppSettings, TranscriptionProvider, LLMProvider, ProcessingMode, TextCorrectionMode } from '../../../shared/types';
+import { validateKeyFormat } from '../../../shared/validation';
 import {
   Zap,
   Bot,
@@ -27,6 +28,7 @@ import {
   Coffee,
   Scissors,
   Wrench,
+  AlertCircle,
 } from 'lucide-react';
 
 // Modern dark theme
@@ -418,14 +420,23 @@ function ApiKeyInput({
   onChange,
   placeholder,
   providerName,
+  providerId,
 }: {
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
   providerName: string;
+  providerId?: string;
 }) {
   const [show, setShow] = useState(false);
+  const [validationResult, setValidationResult] = useState<{ valid: boolean; warning?: string } | null>(null);
   const hasValue = value && value.length > 0;
+
+  const handleBlur = () => {
+    if (!value || !providerId) return;
+    const result = validateKeyFormat(value, providerId);
+    setValidationResult(result);
+  };
 
   return (
     <div style={{ marginTop: '16px' }}>
@@ -442,13 +453,17 @@ function ApiKeyInput({
         <input
           type={show ? 'text' : 'password'}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => {
+            onChange(e.target.value);
+            setValidationResult(null);
+          }}
+          onBlur={handleBlur}
           placeholder={placeholder}
           style={{
             width: '100%',
             padding: '12px 48px 12px 14px',
             backgroundColor: theme.bgHover,
-            border: `1px solid ${hasValue ? theme.success : theme.border}`,
+            border: `1px solid ${validationResult?.valid === false ? theme.warning : hasValue ? theme.success : theme.border}`,
             borderRadius: '8px',
             color: theme.text,
             fontSize: '14px',
@@ -478,7 +493,19 @@ function ApiKeyInput({
           {show ? <EyeOff size={16} /> : <Eye size={16} />}
         </button>
       </div>
-      {hasValue && (
+      {validationResult?.warning && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          marginTop: '8px',
+          fontSize: '12px',
+          color: theme.warning,
+        }}>
+          <AlertCircle size={14} /> {validationResult.warning}
+        </div>
+      )}
+      {!validationResult && hasValue && (
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -969,6 +996,7 @@ export function Settings() {
                     onChange={(value) => updateApiKey(currentTranscriptionProvider.keyName!, value)}
                     placeholder={currentTranscriptionProvider.id === 'groq' ? 'gsk_...' : currentTranscriptionProvider.id === 'mistral' ? 'Enter Mistral API key' : 'sk-...'}
                     providerName={currentTranscriptionProvider.name}
+                    providerId={currentTranscriptionProvider.id}
                   />
                 </SectionCard>
               )}
@@ -1071,9 +1099,11 @@ export function Settings() {
                           currentLLMProvider.id === 'groq' ? 'gsk_...' :
                           currentLLMProvider.id === 'openai' ? 'sk-...' :
                           currentLLMProvider.id === 'anthropic' ? 'sk-ant-...' :
+                          currentLLMProvider.id === 'mistral' ? 'Enter Mistral API key' :
                           'API key...'
                         }
                         providerName={currentLLMProvider.name}
+                        providerId={currentLLMProvider.id}
                       />
                     </SectionCard>
                   )}

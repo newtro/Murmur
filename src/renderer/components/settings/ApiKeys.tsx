@@ -45,6 +45,13 @@ const providers: ProviderConfig[] = [
     placeholder: 'AIza...',
     docsUrl: 'https://makersuite.google.com/app/apikey',
   },
+  {
+    id: 'mistral',
+    name: 'Mistral',
+    description: 'Voxtral transcription and Mistral models',
+    placeholder: 'Enter Mistral API key',
+    docsUrl: 'https://console.mistral.ai',
+  },
 ];
 
 export function ApiKeys({ settings, onUpdate, saving }: ApiKeysProps) {

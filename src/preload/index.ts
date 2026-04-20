@@ -62,6 +62,11 @@ contextBridge.exposeInMainWorld('murmur', {
   // API key validation
   validateApiKey: (provider: string, apiKey: string): Promise<{ valid: boolean; error?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.VALIDATE_API_KEY, provider, apiKey),
+
+  // Environment info
+  getEnvironment: (): Promise<{ isMsix: boolean; platform: string; isPackaged: boolean }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.APP_GET_ENV),
+  openExternal: (url: string) => ipcRenderer.send(IPC_CHANNELS.APP_OPEN_EXTERNAL, url),
 });
 
 // Type declarations for the renderer
@@ -84,6 +89,8 @@ declare global {
       quit: () => void;
       openDevTools: () => void;
       validateApiKey: (provider: string, apiKey: string) => Promise<{ valid: boolean; error?: string }>;
+      getEnvironment: () => Promise<{ isMsix: boolean; platform: string; isPackaged: boolean }>;
+      openExternal: (url: string) => void;
     };
   }
 }

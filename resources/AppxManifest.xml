@@ -35,6 +35,11 @@
           Square150x150Logo="assets\Square150x150Logo.png"
           BackgroundColor="transparent">
       </uap:VisualElements>
+      <Extensions>
+        <desktop:Extension Category="windows.startupTask" Executable="app\Murmur.exe" EntryPoint="Windows.FullTrustApplication">
+          <desktop:StartupTask TaskId="MurmurStartupTask" Enabled="true" DisplayName="Murmur" />
+        </desktop:Extension>
+      </Extensions>
     </Application>
   </Applications>
 </Package>

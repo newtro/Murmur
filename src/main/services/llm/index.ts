@@ -16,17 +16,43 @@ const PREAMBLE_REGEX = /^(?:Here(?:'s| is) (?:the |your )?(?:corrected|rewritten
 
 /**
  * Try to extract text from a JSON response like {"text": "..."}.
- * Returns the extracted text, or null if parsing fails.
+ * Handles markdown code fences, surrounding prose, and truncated-but-recoverable output.
+ * Returns the extracted text, or null if every strategy fails.
  */
 function extractJsonText(raw: string): string | null {
-  try {
-    const parsed = JSON.parse(raw);
-    if (typeof parsed.text === 'string') {
-      return parsed.text;
-    }
-  } catch {
-    // Not valid JSON — fall through
+  const candidates: string[] = [];
+  candidates.push(raw);
+
+  // Strip markdown code fences (```json ... ``` or ``` ... ```)
+  const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenceMatch) candidates.push(fenceMatch[1]);
+
+  // Extract first balanced-ish {...} block from anywhere in the string
+  const firstBrace = raw.indexOf('{');
+  const lastBrace = raw.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    candidates.push(raw.slice(firstBrace, lastBrace + 1));
   }
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate.trim());
+      if (parsed && typeof parsed.text === 'string') return parsed.text;
+    } catch {
+      // try next candidate
+    }
+  }
+
+  // Last-resort: regex-extract the value of a "text" field, handling escaped quotes
+  const textFieldMatch = raw.match(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  if (textFieldMatch) {
+    try {
+      return JSON.parse(`"${textFieldMatch[1]}"`);
+    } catch {
+      return textFieldMatch[1];
+    }
+  }
+
   return null;
 }
 

@@ -2,7 +2,7 @@
 // Murmur - Main Process Entry Point
 // ============================================================================
 
-import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, dialog, shell } from 'electron';
 import * as path from 'path';
 import { createOverlayWindow } from './windows/overlay';
 import { createSettingsWindow } from './windows/settings';
@@ -176,16 +176,29 @@ async function stopRecording() {
     const settings = getSettings();
 
     console.log('[Murmur] Transcribing...');
-    const transcriptionResult = await transcriptionService?.transcribe(audioBuffer, {
+    const fallback = settings.transcriptionFallbackProvider && settings.transcriptionFallbackModel &&
+      settings.transcriptionFallbackProvider !== settings.transcriptionProvider
+      ? {
+          provider: settings.transcriptionFallbackProvider,
+          model: settings.transcriptionFallbackModel,
+        }
+      : undefined;
+
+    const outcome = await transcriptionService?.transcribe(audioBuffer, {
       provider: settings.transcriptionProvider,
       model: settings.transcriptionModel,
       language: settings.language === 'auto' ? undefined : settings.language,
+      fallback,
     });
 
-    if (!transcriptionResult) {
+    if (!outcome) {
       throw new Error('Transcription failed');
     }
 
+    const transcriptionResult = outcome.result;
+    if (outcome.fallbackUsed) {
+      console.log(`[Murmur] Fallback used: ${outcome.providerUsed}`);
+    }
     let finalText = transcriptionResult.text;
 
     const hasApiKey = settings.llmProvider === 'ollama' ||
@@ -216,9 +229,10 @@ async function stopRecording() {
 
   } catch (error) {
     console.error('[Murmur] Recording flow error:', error);
-    updateOverlayState('error', {
-      error: error instanceof Error ? error.message : 'An error occurred'
-    });
+    const classified = (error as { classified?: { userMessage: string } })?.classified;
+    const message = classified?.userMessage
+      ?? (error instanceof Error ? error.message : 'An error occurred');
+    updateOverlayState('error', { error: message });
 
     setTimeout(() => {
       updateOverlayState('idle');
@@ -476,6 +490,16 @@ function setupIpcHandlers() {
   ipcMain.on(IPC_CHANNELS.WINDOW_SETTINGS_OPEN, () => createAndShowSettingsWindow());
   ipcMain.on(IPC_CHANNELS.WINDOW_SETTINGS_CLOSE, () => settingsWindow?.close());
   ipcMain.on(IPC_CHANNELS.APP_QUIT, () => app.quit());
+
+  ipcMain.handle(IPC_CHANNELS.APP_GET_ENV, () => ({
+    isMsix: Boolean((process as NodeJS.Process & { windowsStore?: boolean }).windowsStore),
+    platform: process.platform,
+    isPackaged: app.isPackaged,
+  }));
+
+  ipcMain.on(IPC_CHANNELS.APP_OPEN_EXTERNAL, (_, url: string) => {
+    shell.openExternal(url);
+  });
   ipcMain.on(IPC_CHANNELS.DEVTOOLS_OPEN, () => {
     if (settingsWindow && !settingsWindow.isDestroyed()) {
       settingsWindow.webContents.openDevTools();

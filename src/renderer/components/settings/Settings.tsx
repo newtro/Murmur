@@ -611,6 +611,7 @@ export function Settings() {
   const [selectedDevice, setSelectedDevice] = useState<string>('default');
   const [micTesting, setMicTesting] = useState(false);
   const [micLevel, setMicLevel] = useState(0);
+  const [isMsix, setIsMsix] = useState(false);
   const micStreamRef = React.useRef<MediaStream | null>(null);
   const micAnalyserRef = React.useRef<AnalyserNode | null>(null);
   const micAnimationRef = React.useRef<number | null>(null);
@@ -618,6 +619,7 @@ export function Settings() {
   useEffect(() => {
     loadSettings();
     loadAudioDevices();
+    window.murmur.getEnvironment().then(env => setIsMsix(env.isMsix)).catch(() => {});
     return () => {
       // Cleanup mic test on unmount
       stopMicTest();
@@ -986,7 +988,70 @@ export function Settings() {
                 </div>
               </SectionCard>
 
-              <SectionCard title="Language" step={currentTranscriptionProvider?.requiresKey ? 4 : 3}>
+              <SectionCard title="Fallback Provider" step={currentTranscriptionProvider?.requiresKey ? 4 : 3}>
+                <p style={{ fontSize: '13px', color: theme.textMuted, marginBottom: '12px' }}>
+                  If the primary provider fails (e.g. outage or rate limit), automatically retry with this provider. Requires an API key for the chosen provider (or local Whisper).
+                </p>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <select
+                    value={settings.transcriptionFallbackProvider || ''}
+                    onChange={e => {
+                      const id = e.target.value as TranscriptionProvider | '';
+                      if (!id) {
+                        save({ transcriptionFallbackProvider: undefined, transcriptionFallbackModel: undefined });
+                        return;
+                      }
+                      const providerDef = TRANSCRIPTION_PROVIDERS.find(p => p.id === id);
+                      const defaultModel = providerDef?.models[0]?.id || '';
+                      save({ transcriptionFallbackProvider: id, transcriptionFallbackModel: defaultModel });
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '12px 14px',
+                      backgroundColor: theme.bgHover,
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: '8px',
+                      color: theme.text,
+                      fontSize: '14px',
+                      cursor: 'pointer',
+                      outline: 'none',
+                    }}
+                  >
+                    <option value="">None</option>
+                    {TRANSCRIPTION_PROVIDERS.filter(p => p.id !== settings.transcriptionProvider).map(p => {
+                      const hasKey = !p.requiresKey || !!(settings.apiKeys as any)[p.keyName!];
+                      return (
+                        <option key={p.id} value={p.id} disabled={!hasKey}>
+                          {p.name}{hasKey ? '' : ' (no API key)'}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  {settings.transcriptionFallbackProvider && (
+                    <select
+                      value={settings.transcriptionFallbackModel || ''}
+                      onChange={e => save({ transcriptionFallbackModel: e.target.value })}
+                      style={{
+                        flex: 1,
+                        padding: '12px 14px',
+                        backgroundColor: theme.bgHover,
+                        border: `1px solid ${theme.border}`,
+                        borderRadius: '8px',
+                        color: theme.text,
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                        outline: 'none',
+                      }}
+                    >
+                      {TRANSCRIPTION_PROVIDERS.find(p => p.id === settings.transcriptionFallbackProvider)?.models.map(m => (
+                        <option key={m.id} value={m.id}>{m.name}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              </SectionCard>
+
+              <SectionCard title="Language" step={currentTranscriptionProvider?.requiresKey ? 5 : 4}>
                 <select
                   value={settings.language}
                   onChange={e => save({ language: e.target.value })}
@@ -1569,48 +1634,79 @@ export function Settings() {
               </div>
 
               <SectionCard title="Startup">
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '16px',
-                  backgroundColor: theme.bgHover,
-                  borderRadius: '10px',
-                }}>
-                  <div>
+                {isMsix ? (
+                  <div style={{
+                    padding: '16px',
+                    backgroundColor: theme.bgHover,
+                    borderRadius: '10px',
+                  }}>
                     <div style={{ fontSize: '15px', fontWeight: 500, color: theme.text }}>
                       Launch at startup
                     </div>
-                    <div style={{ fontSize: '13px', color: theme.textMuted, marginTop: '4px' }}>
-                      Automatically start Murmur when you log in
+                    <div style={{ fontSize: '13px', color: theme.textMuted, marginTop: '6px', lineHeight: 1.5 }}>
+                      Because Murmur is installed from the Microsoft Store, Windows manages auto-start. It is enabled by default — you can toggle it in <strong>Windows Settings → Apps → Startup</strong>, or from Task Manager's Startup Apps tab.
                     </div>
+                    <button
+                      onClick={() => window.murmur.openExternal('ms-settings:startupapps')}
+                      style={{
+                        marginTop: '12px',
+                        padding: '8px 14px',
+                        backgroundColor: theme.bgCard,
+                        border: `1px solid ${theme.border}`,
+                        borderRadius: '8px',
+                        color: theme.text,
+                        fontSize: '13px',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Open Startup Settings
+                    </button>
                   </div>
-                  <button
-                    onClick={() => save({ launchAtStartup: !settings.launchAtStartup })}
-                    style={{
-                      width: '52px',
-                      height: '28px',
-                      borderRadius: '14px',
-                      border: 'none',
-                      backgroundColor: settings.launchAtStartup ? theme.primary : theme.bgCard,
-                      cursor: 'pointer',
-                      position: 'relative',
-                      transition: 'background-color 0.2s',
-                    }}
-                  >
-                    <div style={{
-                      width: '22px',
-                      height: '22px',
-                      borderRadius: '50%',
-                      backgroundColor: '#fff',
-                      position: 'absolute',
-                      top: '3px',
-                      left: settings.launchAtStartup ? '27px' : '3px',
-                      transition: 'left 0.2s',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                    }} />
-                  </button>
-                </div>
+                ) : (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '16px',
+                    backgroundColor: theme.bgHover,
+                    borderRadius: '10px',
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '15px', fontWeight: 500, color: theme.text }}>
+                        Launch at startup
+                      </div>
+                      <div style={{ fontSize: '13px', color: theme.textMuted, marginTop: '4px' }}>
+                        Automatically start Murmur when you log in
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => save({ launchAtStartup: !settings.launchAtStartup })}
+                      style={{
+                        width: '52px',
+                        height: '28px',
+                        borderRadius: '14px',
+                        border: 'none',
+                        backgroundColor: settings.launchAtStartup ? theme.primary : theme.bgCard,
+                        cursor: 'pointer',
+                        position: 'relative',
+                        transition: 'background-color 0.2s',
+                      }}
+                    >
+                      <div style={{
+                        width: '22px',
+                        height: '22px',
+                        borderRadius: '50%',
+                        backgroundColor: '#fff',
+                        position: 'absolute',
+                        top: '3px',
+                        left: settings.launchAtStartup ? '27px' : '3px',
+                        transition: 'left 0.2s',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                      }} />
+                    </button>
+                  </div>
+                )}
               </SectionCard>
 
               <SectionCard title="Developer">

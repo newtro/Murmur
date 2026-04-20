@@ -42,6 +42,8 @@ export interface AppSettings {
   // Transcription
   transcriptionProvider: TranscriptionProvider;
   transcriptionModel: string;
+  transcriptionFallbackProvider?: TranscriptionProvider;
+  transcriptionFallbackModel?: string;
   language: string;
 
   // LLM Processing

@@ -28,6 +28,8 @@ export const IPC_CHANNELS = {
 
   // App
   APP_QUIT: 'app:quit',
+  APP_GET_ENV: 'app:get-env',
+  APP_OPEN_EXTERNAL: 'app:open-external',
 
   // DevTools
   DEVTOOLS_OPEN: 'devtools:open',

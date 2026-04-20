@@ -3,6 +3,13 @@ name: Release
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '.gitignore'
+      - '.gitattributes'
+      - '**/*.md'
+      - 'LICENSE'
+      - '.github/**'
+      - '!.github/workflows/release.yml'
   workflow_dispatch:
 
 permissions:

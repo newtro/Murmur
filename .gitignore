@@ -35,3 +35,9 @@ resources/models/
 # Temporary files
 *.tmp
 *.temp
+
+# Playwright MCP scratch output
+.playwright-mcp/
+*-overview.yml
+overview-*.png
+after-submit-*.png

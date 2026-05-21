@@ -132,6 +132,12 @@ export const LANGUAGES = [
   { code: 'ko', name: 'Korean' },
 ];
 
+// Providers that support live streaming transcription. Single source of truth
+// for both main process (settings normalization in db/store.ts) and renderer
+// (provider card filtering / LIVE badge). Add to this set when a new
+// streaming-capable provider lands.
+export const STREAMING_CAPABLE_PROVIDERS: ReadonlyArray<string> = ['assemblyai'];
+
 // Transcription Models
 export const TRANSCRIPTION_MODELS = {
   groq: [
@@ -145,6 +151,10 @@ export const TRANSCRIPTION_MODELS = {
   ],
   mistral: [
     { id: 'voxtral-mini-2602', name: 'Voxtral Mini Transcribe V2', description: 'Best accuracy ($0.003/min)' },
+  ],
+  assemblyai: [
+    { id: 'universal-3-pro', name: 'Universal-3 Pro', description: 'Flagship accuracy (~$0.0035/min)' },
+    { id: 'universal-2', name: 'Universal-2', description: 'Budget tier (~$0.0025/min)' },
   ],
   'whisper-local': [
     { id: 'tiny', name: 'Tiny', description: '75MB - Fastest' },

@@ -143,7 +143,7 @@ function StatusContent({
     case 'complete':
       return (
         <span style={textStyle}>
-          Inserted {wordCount} words
+          {wordCount > 0 ? `Inserted ${wordCount} words` : 'Done'}
         </span>
       );
     case 'error':

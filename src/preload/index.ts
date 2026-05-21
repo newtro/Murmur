@@ -14,10 +14,12 @@ contextBridge.exposeInMainWorld('murmur', {
     ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET, settings),
   resetSettings: (): Promise<AppSettings> => ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_RESET),
 
-  // Recording commands from main to overlay
-  onRecordingStart: (callback: () => void) => {
-    ipcRenderer.on(IPC_CHANNELS.RECORDING_START, callback);
-    return () => ipcRenderer.removeListener(IPC_CHANNELS.RECORDING_START, callback);
+  // Recording commands from main to overlay.
+  // Payload may include a mode hint so the overlay can pick the right capture path.
+  onRecordingStart: (callback: (payload?: { mode?: 'batch' | 'live' }) => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, payload?: { mode?: 'batch' | 'live' }) => callback(payload);
+    ipcRenderer.on(IPC_CHANNELS.RECORDING_START, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.RECORDING_START, handler);
   },
   onRecordingStop: (callback: () => void) => {
     ipcRenderer.on(IPC_CHANNELS.RECORDING_STOP, callback);
@@ -67,6 +69,40 @@ contextBridge.exposeInMainWorld('murmur', {
   getEnvironment: (): Promise<{ isMsix: boolean; platform: string; isPackaged: boolean }> =>
     ipcRenderer.invoke(IPC_CHANNELS.APP_GET_ENV),
   openExternal: (url: string) => ipcRenderer.send(IPC_CHANNELS.APP_OPEN_EXTERNAL, url),
+
+  // Streaming (live dictation)
+  startStreamingSession: (sampleRate?: number): Promise<{ ok: true } | { ok: false; error: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.STREAMING_SESSION_START, sampleRate),
+  stopStreamingSession: (): Promise<{ ok: true }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.STREAMING_SESSION_STOP),
+  sendStreamingAudioChunk: (chunk: ArrayBuffer): void => {
+    ipcRenderer.send(IPC_CHANNELS.STREAMING_AUDIO_CHUNK, chunk);
+  },
+  onStreamingTranscript: (
+    callback: (event: { transcript: string; endOfTurn: boolean; words?: unknown[] }) => void
+  ) => {
+    const handler = (_e: Electron.IpcRendererEvent, payload: { transcript: string; endOfTurn: boolean; words?: unknown[] }) =>
+      callback(payload);
+    ipcRenderer.on(IPC_CHANNELS.STREAMING_TRANSCRIPT, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.STREAMING_TRANSCRIPT, handler);
+  },
+  onStreamingSessionOpened: (callback: (event: { sessionId: string; expiresAt: number }) => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, payload: { sessionId: string; expiresAt: number }) =>
+      callback(payload);
+    ipcRenderer.on(IPC_CHANNELS.STREAMING_SESSION_OPENED, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.STREAMING_SESSION_OPENED, handler);
+  },
+  onStreamingSessionClosed: (callback: (event: { code: number; reason: string }) => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, payload: { code: number; reason: string }) =>
+      callback(payload);
+    ipcRenderer.on(IPC_CHANNELS.STREAMING_SESSION_CLOSED, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.STREAMING_SESSION_CLOSED, handler);
+  },
+  onStreamingError: (callback: (event: { message: string }) => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, payload: { message: string }) => callback(payload);
+    ipcRenderer.on(IPC_CHANNELS.STREAMING_ERROR, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.STREAMING_ERROR, handler);
+  },
 });
 
 // Type declarations for the renderer
@@ -76,7 +112,7 @@ declare global {
       getSettings: () => Promise<AppSettings>;
       setSettings: (settings: Partial<AppSettings>) => Promise<AppSettings>;
       resetSettings: () => Promise<AppSettings>;
-      onRecordingStart: (callback: () => void) => () => void;
+      onRecordingStart: (callback: (payload?: { mode?: 'batch' | 'live' }) => void) => () => void;
       onRecordingStop: (callback: () => void) => () => void;
       onRecordingCancel: (callback: () => void) => () => void;
       sendAudioData: (data: { base64: string; duration: number }) => void;
@@ -91,6 +127,19 @@ declare global {
       validateApiKey: (provider: string, apiKey: string) => Promise<{ valid: boolean; error?: string }>;
       getEnvironment: () => Promise<{ isMsix: boolean; platform: string; isPackaged: boolean }>;
       openExternal: (url: string) => void;
+      startStreamingSession: (sampleRate?: number) => Promise<{ ok: true } | { ok: false; error: string }>;
+      stopStreamingSession: () => Promise<{ ok: true }>;
+      sendStreamingAudioChunk: (chunk: ArrayBuffer) => void;
+      onStreamingTranscript: (
+        callback: (event: { transcript: string; endOfTurn: boolean; words?: unknown[] }) => void
+      ) => () => void;
+      onStreamingSessionOpened: (
+        callback: (event: { sessionId: string; expiresAt: number }) => void
+      ) => () => void;
+      onStreamingSessionClosed: (
+        callback: (event: { code: number; reason: string }) => void
+      ) => () => void;
+      onStreamingError: (callback: (event: { message: string }) => void) => () => void;
     };
   }
 }

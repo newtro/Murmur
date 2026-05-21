@@ -3,11 +3,12 @@
 // ============================================================================
 
 // Provider Types
-export type TranscriptionProvider = 'whisper-local' | 'groq' | 'openai' | 'mistral';
+export type TranscriptionProvider = 'whisper-local' | 'groq' | 'openai' | 'mistral' | 'assemblyai';
 export type LLMProvider = 'openai' | 'anthropic' | 'gemini' | 'groq' | 'ollama' | 'mistral';
 export type ProcessingMode = 'raw' | 'clean' | 'polish';
 export type TextCorrectionMode = 'proofread' | 'rewrite' | 'formal' | 'casual' | 'concise' | 'custom';
 export type ActivationMode = 'push-to-talk' | 'toggle';
+export type LiveDictationTypingMode = 'finals' | 'partials';
 
 // Overlay States
 export type OverlayState = 'idle' | 'listening' | 'processing' | 'complete' | 'error';
@@ -26,6 +27,7 @@ export interface ApiKeys {
   anthropic?: string;
   gemini?: string;
   mistral?: string;
+  assemblyai?: string;
 }
 
 // Hotkey Configuration
@@ -69,6 +71,11 @@ export interface AppSettings {
   textCorrectionMode: TextCorrectionMode;
   textCorrectionCustomPrompt: string;
 
+  // Live Dictation
+  liveDictationEnabled: boolean;
+  liveDictationTypingMode: LiveDictationTypingMode;
+  liveDictationStabilityMs: number;
+
   // System
   launchAtStartup: boolean;
 }
@@ -100,6 +107,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
   textCorrectionMode: 'proofread',
   textCorrectionCustomPrompt: '',
+
+  liveDictationEnabled: false,
+  liveDictationTypingMode: 'finals',
+  liveDictationStabilityMs: 150,
 
   launchAtStartup: false,
 };

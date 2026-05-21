@@ -7,6 +7,7 @@ import { GroqTranscriptionProvider } from './groq';
 import { OpenAITranscriptionProvider } from './openai';
 import { WhisperLocalProvider } from './whisper-local';
 import { MistralTranscriptionProvider } from './mistral';
+import { AssemblyAITranscriptionProvider } from './assemblyai';
 import { classifyTranscriptionError, ClassifiedTranscriptionError } from './errors';
 
 interface TranscriptionOptions {
@@ -32,6 +33,7 @@ export class TranscriptionService {
   private openaiProvider: OpenAITranscriptionProvider;
   private whisperProvider: WhisperLocalProvider;
   private mistralProvider: MistralTranscriptionProvider;
+  private assemblyaiProvider: AssemblyAITranscriptionProvider;
 
   constructor(apiKeys: ApiKeys) {
     this.apiKeys = apiKeys;
@@ -39,6 +41,7 @@ export class TranscriptionService {
     this.openaiProvider = new OpenAITranscriptionProvider(apiKeys.openai);
     this.whisperProvider = new WhisperLocalProvider();
     this.mistralProvider = new MistralTranscriptionProvider(apiKeys.mistral);
+    this.assemblyaiProvider = new AssemblyAITranscriptionProvider(apiKeys.assemblyai);
   }
 
   async transcribe(
@@ -100,6 +103,8 @@ export class TranscriptionService {
         return this.whisperProvider.transcribe(audioBuffer, model, language);
       case 'mistral':
         return this.mistralProvider.transcribe(audioBuffer, model, language);
+      case 'assemblyai':
+        return this.assemblyaiProvider.transcribe(audioBuffer, model, language);
       default:
         throw new Error(`Unknown transcription provider: ${provider}`);
     }
@@ -115,6 +120,7 @@ export class TranscriptionService {
     this.groqProvider.updateApiKey(apiKeys.groq);
     this.openaiProvider.updateApiKey(apiKeys.openai);
     this.mistralProvider.updateApiKey(apiKeys.mistral);
+    this.assemblyaiProvider.updateApiKey(apiKeys.assemblyai);
   }
 
   async validateGroqKey(apiKey: string): Promise<{ valid: boolean; error?: string }> {
@@ -127,6 +133,10 @@ export class TranscriptionService {
 
   async validateMistralKey(apiKey: string): Promise<{ valid: boolean; error?: string }> {
     return this.mistralProvider.validateKey(apiKey);
+  }
+
+  async validateAssemblyAIKey(apiKey: string): Promise<{ valid: boolean; error?: string }> {
+    return this.assemblyaiProvider.validateKey(apiKey);
   }
 
   // Check if whisper model is downloaded

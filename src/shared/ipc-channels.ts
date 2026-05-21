@@ -42,6 +42,15 @@ export const IPC_CHANNELS = {
   TRANSCRIPTION_COMPLETE: 'transcription:complete',
   TRANSCRIPTION_ERROR: 'transcription:error',
 
+  // Streaming (live dictation)
+  STREAMING_SESSION_START: 'streaming:session:start',
+  STREAMING_SESSION_STOP: 'streaming:session:stop',
+  STREAMING_AUDIO_CHUNK: 'streaming:audio:chunk',
+  STREAMING_TRANSCRIPT: 'streaming:transcript',
+  STREAMING_SESSION_OPENED: 'streaming:session:opened',
+  STREAMING_SESSION_CLOSED: 'streaming:session:closed',
+  STREAMING_ERROR: 'streaming:error',
+
   // Model Management
   MODEL_DOWNLOAD_START: 'model:download:start',
   MODEL_DOWNLOAD_PROGRESS: 'model:download:progress',

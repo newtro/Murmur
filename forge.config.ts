@@ -32,7 +32,21 @@ function copyDirSync(src: string, dest: string) {
 // IMPORTANT: Forge's electron-rebuild runs as an earlier afterCopy hook,
 // BEFORE our hook — so the modules aren't present when rebuild runs.
 // We must call @electron/rebuild ourselves after copying.
-const NATIVE_MODULES = ['uiohook-napi', 'node-gyp-build'];
+// nut-tree-fork's libnut ships native binaries via platform-specific
+// sub-packages. We load whichever matches process.platform at runtime; all
+// three are listed for the copy step because the developer's host platform
+// determines which is built into the installer (electron-rebuild handles the
+// rebuild). copyDirSync no-ops on missing sources, so listing all three is safe.
+// `bindings` is the runtime .node locator that libnut-* depends on.
+const NATIVE_MODULES = [
+  'uiohook-napi',
+  'node-gyp-build',
+  '@nut-tree-fork/libnut-win32',
+  '@nut-tree-fork/libnut-darwin',
+  '@nut-tree-fork/libnut-linux',
+  'bindings',
+  'file-uri-to-path',
+];
 
 const config: ForgeConfig = {
   packagerConfig: {
@@ -42,7 +56,7 @@ const config: ForgeConfig = {
     // Copy icons to process.resourcesPath so the app can find them at runtime
     extraResource: ['./resources/icons'],
     asar: {
-      unpack: '**/node_modules/{uiohook-napi,node-gyp-build}/**/*',
+      unpack: '**/node_modules/{uiohook-napi,node-gyp-build,@nut-tree-fork,bindings,file-uri-to-path}/**/*',
     },
     appBundleId: 'com.murmur.app',
     afterCopy: [

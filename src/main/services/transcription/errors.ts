@@ -24,6 +24,7 @@ const PROVIDER_LABELS: Record<TranscriptionProvider, string> = {
   groq: 'Groq',
   openai: 'OpenAI',
   mistral: 'Mistral',
+  assemblyai: 'AssemblyAI',
   'whisper-local': 'local Whisper',
 };
 

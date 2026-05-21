@@ -140,7 +140,56 @@ jobs:
           echo "=== All artifacts ==="
           find artifacts -type f || echo "No artifacts found"
 
-      - name: Create Release
+      - name: Extract release notes from CHANGELOG
+        id: notes
+        run: |
+          # Look for a "## v${VERSION}" heading in CHANGELOG.md. Extract everything
+          # from that heading up to the next "## " heading (or EOF). Falls back to
+          # GitHub's auto-generated notes when no matching section is found.
+          VERSION='${{ needs.version.outputs.version }}'
+          if [ ! -f CHANGELOG.md ]; then
+            echo "CHANGELOG.md not found; falling back to auto-generated notes."
+            echo "have_notes=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          NOTES=$(awk -v ver="$VERSION" '
+            BEGIN { in_section = 0 }
+            /^## / {
+              if (in_section) exit
+              if (index($0, "v" ver) > 0) { in_section = 1; next }
+            }
+            in_section { print }
+          ' CHANGELOG.md)
+          if [ -z "$NOTES" ]; then
+            echo "No CHANGELOG section found for v${VERSION}; falling back to auto-generated notes."
+            echo "have_notes=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "Found CHANGELOG section for v${VERSION}:"
+          echo "$NOTES" | head -10
+          echo "have_notes=true" >> $GITHUB_OUTPUT
+          {
+            echo 'body<<NOTES_EOF'
+            echo "$NOTES"
+            echo 'NOTES_EOF'
+          } >> $GITHUB_OUTPUT
+
+      - name: Create Release (with CHANGELOG body)
+        if: steps.notes.outputs.have_notes == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          name: Murmur ${{ needs.version.outputs.version }}
+          draft: false
+          prerelease: false
+          body: ${{ steps.notes.outputs.body }}
+          files: |
+            artifacts/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release (auto-generated body fallback)
+        if: steps.notes.outputs.have_notes != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.version.outputs.tag }}

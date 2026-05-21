@@ -6,6 +6,30 @@ import { app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { AppSettings, DEFAULT_SETTINGS, TranscriptionHistoryItem } from '../../shared/types';
+import { STREAMING_CAPABLE_PROVIDERS } from '../../shared/constants';
+
+function normalizeLiveDictation(settings: AppSettings): AppSettings {
+  let next = settings;
+  if (
+    next.liveDictationEnabled &&
+    !STREAMING_CAPABLE_PROVIDERS.includes(next.transcriptionProvider)
+  ) {
+    console.warn(
+      `[Murmur] Live dictation was enabled with non-streaming provider '${next.transcriptionProvider}'; disabling.`
+    );
+    next = { ...next, liveDictationEnabled: false };
+  }
+  // Clamp stability to the same 50–500ms range the UI exposes, in case a
+  // hand-edited store has a value outside that range or non-finite.
+  if (!Number.isFinite(next.liveDictationStabilityMs)) {
+    next = { ...next, liveDictationStabilityMs: 150 };
+  } else if (next.liveDictationStabilityMs < 50) {
+    next = { ...next, liveDictationStabilityMs: 50 };
+  } else if (next.liveDictationStabilityMs > 500) {
+    next = { ...next, liveDictationStabilityMs: 500 };
+  }
+  return next;
+}
 
 interface StoreData {
   settings: AppSettings;
@@ -30,7 +54,7 @@ function loadFromDisk(): StoreData {
       const raw = fs.readFileSync(storePath, 'utf-8');
       const parsed = JSON.parse(raw) as Partial<StoreData>;
       return {
-        settings: { ...DEFAULT_SETTINGS, ...(parsed.settings || {}) },
+        settings: normalizeLiveDictation({ ...DEFAULT_SETTINGS, ...(parsed.settings || {}) }),
         history: Array.isArray(parsed.history) ? parsed.history : [],
         dictionary: Array.isArray(parsed.dictionary) ? parsed.dictionary : [],
       };
@@ -93,7 +117,7 @@ export function getSettings(): AppSettings {
 
 export function setSettings(settings: AppSettings): void {
   if (!data) throw new Error('Store not initialized');
-  data.settings = { ...settings };
+  data.settings = normalizeLiveDictation({ ...settings });
   saveToDisk();
 }
 

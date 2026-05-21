@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { AppSettings, TranscriptionProvider, LLMProvider, ProcessingMode, TextCorrectionMode } from '../../../shared/types';
+import { STREAMING_CAPABLE_PROVIDERS } from '../../../shared/constants';
 import {
   Zap,
   Bot,
@@ -27,6 +28,7 @@ import {
   Coffee,
   Scissors,
   Wrench,
+  Waves,
 } from 'lucide-react';
 
 // Modern dark theme
@@ -55,6 +57,7 @@ const TRANSCRIPTION_PROVIDERS: {
   icon: React.ReactNode;
   requiresKey: boolean;
   keyName: string | null;
+  streamingCapable?: boolean;
   models: { id: string; name: string; description: string }[];
 }[] = [
   {
@@ -92,6 +95,21 @@ const TRANSCRIPTION_PROVIDERS: {
     keyName: 'mistral',
     models: [
       { id: 'voxtral-mini-2602', name: 'Voxtral Mini Transcribe V2', description: 'Best accuracy' },
+    ],
+  },
+  {
+    id: 'assemblyai',
+    name: 'AssemblyAI',
+    description: 'High-accuracy transcription (~$0.0035/min)',
+    icon: <Waves size={20} />,
+    requiresKey: true,
+    keyName: 'assemblyai',
+    // Derived from the shared STREAMING_CAPABLE_PROVIDERS constant so the
+    // settings UI and the main-process normalization stay in sync.
+    streamingCapable: STREAMING_CAPABLE_PROVIDERS.includes('assemblyai'),
+    models: [
+      { id: 'universal-3-pro', name: 'Universal-3 Pro', description: 'Flagship accuracy' },
+      { id: 'universal-2', name: 'Universal-2', description: 'Budget tier' },
     ],
   },
   {
@@ -266,7 +284,7 @@ function ProviderCard({
   onClick,
   hasKey,
 }: {
-  provider: { id: string; name: string; description: string; icon: React.ReactNode; requiresKey: boolean };
+  provider: { id: string; name: string; description: string; icon: React.ReactNode; requiresKey: boolean; streamingCapable?: boolean };
   selected: boolean;
   onClick: () => void;
   hasKey: boolean;
@@ -301,6 +319,19 @@ function ProviderCard({
           gap: '8px',
         }}>
           {provider.name}
+          {provider.streamingCapable && (
+            <span style={{
+              fontSize: '10px',
+              padding: '2px 6px',
+              backgroundColor: theme.success + '25',
+              color: theme.success,
+              borderRadius: '4px',
+              fontWeight: 600,
+              letterSpacing: '0.3px',
+            }}>
+              LIVE
+            </span>
+          )}
           {selected && <span style={{ color: theme.primary, fontSize: '12px' }}>Selected</span>}
         </div>
         <div style={{ fontSize: '13px', color: theme.textMuted, marginTop: '2px' }}>
@@ -941,21 +972,123 @@ export function Settings() {
                 </p>
               </div>
 
+              <SectionCard title="Live Dictation">
+                <p style={{ fontSize: '13px', color: theme.textMuted, marginBottom: '12px' }}>
+                  Stream text into the focused app as you speak. Requires a streaming-capable provider (currently AssemblyAI).
+                </p>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', marginBottom: '12px' }}>
+                  <input
+                    type="checkbox"
+                    checked={settings.liveDictationEnabled}
+                    onChange={(e) => {
+                      const enabled = e.target.checked;
+                      const updates: Partial<typeof settings> = { liveDictationEnabled: enabled };
+                      // If turning on and current provider isn't streaming-capable, switch to the first one that is.
+                      if (enabled) {
+                        const current = TRANSCRIPTION_PROVIDERS.find(p => p.id === settings.transcriptionProvider);
+                        if (!current?.streamingCapable) {
+                          const firstStreaming = TRANSCRIPTION_PROVIDERS.find(p => p.streamingCapable);
+                          if (firstStreaming) {
+                            updates.transcriptionProvider = firstStreaming.id;
+                            updates.transcriptionModel = firstStreaming.models[0]?.id || '';
+                          }
+                        }
+                      }
+                      save(updates);
+                    }}
+                    style={{ width: '18px', height: '18px', accentColor: theme.primary }}
+                  />
+                  <span style={{ fontSize: '14px', color: theme.text }}>Enable live dictation</span>
+                </label>
+                {settings.liveDictationEnabled && (
+                  <div style={{ marginTop: '8px', paddingLeft: '30px' }}>
+                    <div style={{ fontSize: '13px', color: theme.textMuted, marginBottom: '8px' }}>
+                      Typing behavior
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+                        <input
+                          type="radio"
+                          name="liveTypingMode"
+                          checked={settings.liveDictationTypingMode === 'finals'}
+                          onChange={() => save({ liveDictationTypingMode: 'finals' })}
+                          style={{ marginTop: '3px', accentColor: theme.primary }}
+                        />
+                        <span style={{ fontSize: '13px' }}>
+                          <span style={{ color: theme.text, fontWeight: 500 }}>Finals only (recommended)</span>
+                          <span style={{ color: theme.textMuted }}> — text appears in chunks at sentence boundaries. No backspacing into adjacent content.</span>
+                        </span>
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+                        <input
+                          type="radio"
+                          name="liveTypingMode"
+                          checked={settings.liveDictationTypingMode === 'partials'}
+                          onChange={() => save({ liveDictationTypingMode: 'partials' })}
+                          style={{ marginTop: '3px', accentColor: theme.primary }}
+                        />
+                        <span style={{ fontSize: '13px' }}>
+                          <span style={{ color: theme.text, fontWeight: 500 }}>Stability-gated partials</span>
+                          <span style={{ color: theme.textMuted }}> — text streams in word-by-word with backspacing on revisions. Don't click into other apps mid-utterance.</span>
+                        </span>
+                      </label>
+                    </div>
+                    {settings.liveDictationTypingMode === 'partials' && (
+                      <details style={{ marginTop: '14px' }}>
+                        <summary style={{
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          color: theme.textMuted,
+                          userSelect: 'none',
+                        }}>
+                          Advanced
+                        </summary>
+                        <div style={{ marginTop: '10px' }}>
+                          <div style={{ fontSize: '12px', color: theme.textMuted, marginBottom: '6px' }}>
+                            Stability threshold: <span style={{ color: theme.text }}>{settings.liveDictationStabilityMs}ms</span>
+                          </div>
+                          <input
+                            type="range"
+                            min={50}
+                            max={500}
+                            step={10}
+                            value={settings.liveDictationStabilityMs}
+                            onChange={(e) => save({ liveDictationStabilityMs: parseInt(e.target.value, 10) })}
+                            style={{ width: '100%', accentColor: theme.primary }}
+                            aria-label="Stability threshold in milliseconds"
+                          />
+                          <div style={{ fontSize: '11px', color: theme.textDim, marginTop: '4px' }}>
+                            How long a partial must hold steady before being typed. Lower = faster but more flicker.
+                          </div>
+                        </div>
+                      </details>
+                    )}
+                  </div>
+                )}
+              </SectionCard>
+
               <SectionCard title="Select Provider" step={1}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {TRANSCRIPTION_PROVIDERS.map(provider => (
-                    <ProviderCard
-                      key={provider.id}
-                      provider={provider}
-                      selected={settings.transcriptionProvider === provider.id}
-                      hasKey={!provider.requiresKey || !!(settings.apiKeys as any)[provider.keyName!]}
-                      onClick={() => {
-                        const defaultModel = provider.models[0]?.id || '';
-                        save({ transcriptionProvider: provider.id, transcriptionModel: defaultModel });
-                      }}
-                    />
-                  ))}
+                  {TRANSCRIPTION_PROVIDERS
+                    .filter(p => !settings.liveDictationEnabled || p.streamingCapable)
+                    .map(provider => (
+                      <ProviderCard
+                        key={provider.id}
+                        provider={provider}
+                        selected={settings.transcriptionProvider === provider.id}
+                        hasKey={!provider.requiresKey || !!(settings.apiKeys as any)[provider.keyName!]}
+                        onClick={() => {
+                          const defaultModel = provider.models[0]?.id || '';
+                          save({ transcriptionProvider: provider.id, transcriptionModel: defaultModel });
+                        }}
+                      />
+                    ))}
                 </div>
+                {settings.liveDictationEnabled && (
+                  <p style={{ fontSize: '12px', color: theme.textDim, marginTop: '10px' }}>
+                    Only streaming-capable providers are shown. Turn off Live Dictation above to see all providers.
+                  </p>
+                )}
               </SectionCard>
 
               {currentTranscriptionProvider?.requiresKey && (
@@ -963,13 +1096,13 @@ export function Settings() {
                   <p style={{ fontSize: '13px', color: theme.textMuted, marginBottom: '12px' }}>
                     Get your API key from{' '}
                     <span style={{ color: theme.primary }}>
-                      {currentTranscriptionProvider.id === 'groq' ? 'console.groq.com' : currentTranscriptionProvider.id === 'mistral' ? 'console.mistral.ai' : 'platform.openai.com'}
+                      {currentTranscriptionProvider.id === 'groq' ? 'console.groq.com' : currentTranscriptionProvider.id === 'mistral' ? 'console.mistral.ai' : currentTranscriptionProvider.id === 'assemblyai' ? 'assemblyai.com/dashboard' : 'platform.openai.com'}
                     </span>
                   </p>
                   <ApiKeyInput
                     value={(settings.apiKeys as any)[currentTranscriptionProvider.keyName!] || ''}
                     onChange={(value) => updateApiKey(currentTranscriptionProvider.keyName!, value)}
-                    placeholder={currentTranscriptionProvider.id === 'groq' ? 'gsk_...' : currentTranscriptionProvider.id === 'mistral' ? 'Enter Mistral API key' : 'sk-...'}
+                    placeholder={currentTranscriptionProvider.id === 'groq' ? 'gsk_...' : currentTranscriptionProvider.id === 'mistral' ? 'Enter Mistral API key' : currentTranscriptionProvider.id === 'assemblyai' ? 'Enter AssemblyAI API key' : 'sk-...'}
                     providerName={currentTranscriptionProvider.name}
                   />
                 </SectionCard>

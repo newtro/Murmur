@@ -41,3 +41,6 @@ resources/models/
 *-overview.yml
 overview-*.png
 after-submit-*.png
+
+# Claude Code build-to-complete per-session state
+.archon/

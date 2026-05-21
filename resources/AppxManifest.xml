@@ -25,6 +25,13 @@
   <Capabilities>
     <rescap:Capability Name="runFullTrust" />
     <Capability Name="internetClient" />
+    <!--
+      Required for voice dictation: Murmur calls getUserMedia({ audio: true }).
+      Without this, MSIX-packaged Murmur is blocked by Windows before
+      Electron's permission handler ever sees the request, and the renderer
+      gets NotAllowedError immediately on hotkey press.
+    -->
+    <DeviceCapability Name="microphone" />
   </Capabilities>
   <Applications>
     <Application Id="App" Executable="app\Murmur.exe" EntryPoint="Windows.FullTrustApplication">

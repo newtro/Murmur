@@ -9,8 +9,11 @@ import { createSettingsWindow } from './windows/settings';
 import { initializeDatabase, closeDatabase, getSettings, setSettings } from './db/store';
 import { HotkeyService } from './services/hotkeys';
 import { TranscriptionService } from './services/transcription';
+import { StreamingTranscriptionService } from './services/streaming-transcription';
 import { LLMService } from './services/llm';
 import { PasteService } from './services/paste';
+import { TypingService } from './services/typing';
+import { TypingEngine } from './services/typing-engine';
 import { IPC_CHANNELS } from '../shared/ipc-channels';
 import { TEXT_CORRECTION_PROMPTS } from '../shared/constants';
 import { OverlayState, AppSettings, DEFAULT_SETTINGS, AudioLevel } from '../shared/types';
@@ -25,8 +28,19 @@ let settingsWindow: BrowserWindow | null = null;
 
 let hotkeyService: HotkeyService | null = null;
 let transcriptionService: TranscriptionService | null = null;
+let streamingTranscriptionService: StreamingTranscriptionService | null = null;
 let llmService: LLMService | null = null;
 let pasteService: PasteService | null = null;
+let typingService: TypingService | null = null;
+let typingEngine: TypingEngine | null = null;
+let typingEngineTickTimer: ReturnType<typeof setInterval> | null = null;
+let isLiveDictating = false;
+// Set true during a deliberate stop (stopRecording's live branch) so the
+// streaming-close handler stays out of the way — the stop path handles
+// teardown itself. Without this flag the close event during normal stop
+// would prematurely flip the session off and drop the final 'turn' event
+// AssemblyAI emits during the close-ack window.
+let isLiveStopping = false;
 
 let isRecording = false;
 let isCorrectingText = false;
@@ -132,19 +146,116 @@ async function startRecording() {
     }
   }
 
+  // Branch on live-dictation mode.
+  const liveMode = settings.liveDictationEnabled;
+  if (liveMode) {
+    if (!typingService?.isAvailable()) {
+      const platform = process.platform === 'darwin'
+        ? 'macOS: Grant Accessibility permission to Murmur in System Settings → Privacy & Security → Accessibility.'
+        : process.platform === 'linux'
+          ? 'Linux: live dictation requires an X11 session (Wayland is not yet supported).'
+          : 'Live dictation is unavailable on this platform.';
+      await dialog.showMessageBox({
+        type: 'warning',
+        title: 'Live Dictation Unavailable',
+        message: 'Murmur cannot type into the focused app right now.',
+        detail: platform,
+        buttons: ['OK'],
+      });
+      return;
+    }
+    // Configure engine for this session and reset state.
+    typingEngine?.setMode(settings.liveDictationTypingMode);
+    typingEngine?.setStabilityMs(settings.liveDictationStabilityMs);
+    typingEngine?.reset();
+    isLiveDictating = true;
+    if (settings.liveDictationTypingMode === 'partials') {
+      startEngineTickTimer();
+    }
+  }
+
   isRecording = true;
 
-  console.log('[Murmur] Starting recording...');
+  console.log(`[Murmur] Starting recording... (mode=${liveMode ? 'live' : 'batch'})`);
   updateOverlayState('listening');
 
   if (overlayWindow && !overlayWindow.isDestroyed()) {
-    overlayWindow.webContents.send(IPC_CHANNELS.RECORDING_START);
+    overlayWindow.webContents.send(IPC_CHANNELS.RECORDING_START, { mode: liveMode ? 'live' : 'batch' });
+  }
+}
+
+function startEngineTickTimer() {
+  stopEngineTickTimer();
+  typingEngineTickTimer = setInterval(() => {
+    if (!isLiveDictating) return;
+    void typingEngine?.tick();
+  }, 50);
+}
+
+function stopEngineTickTimer() {
+  if (typingEngineTickTimer) {
+    clearInterval(typingEngineTickTimer);
+    typingEngineTickTimer = null;
+  }
+}
+
+/**
+ * Tear down an active live-dictation session unilaterally. Used by stream
+ * error/close handlers so the next hotkey press starts a clean session
+ * instead of waiting on a hung batch-path audio promise.
+ */
+function tearDownLiveSession() {
+  typingEngine?.abort();
+  stopEngineTickTimer();
+  isLiveDictating = false;
+  isRecording = false;
+  if (pendingAudioReject) {
+    pendingAudioReject(new Error('Live session ended'));
+    pendingAudioResolve = null;
+    pendingAudioReject = null;
+  }
+  if (overlayWindow && !overlayWindow.isDestroyed()) {
+    overlayWindow.webContents.send(IPC_CHANNELS.RECORDING_CANCEL);
   }
 }
 
 async function stopRecording() {
   if (!isRecording) return;
   isRecording = false;
+
+  // Live mode: AssemblyAI emits the final `turn` event AFTER we initiate
+  // the WS close, so we have to keep the session alive (and the engine
+  // unaborted) until stop() resolves. The `isLiveStopping` flag tells the
+  // close-event handler to stand down so it doesn't double-tear-down.
+  if (isLiveDictating) {
+    console.log('[Murmur] Stopping live dictation...');
+    updateOverlayState('processing');
+    stopEngineTickTimer();
+    isLiveStopping = true;
+    try {
+      // Push any pending partial out (no-op in finals mode).
+      await typingEngine?.flush();
+      // Close the WS. The close-ack window may carry one last 'turn' event
+      // with the final transcript — our turn handler routes it through the
+      // engine while isLiveDictating is still true.
+      await streamingTranscriptionService?.stop();
+      // Wait for any queued insert/backspace ops to actually fire so the
+      // overlay doesn't flip to "complete" before the keystrokes land.
+      await typingEngine?.drain();
+    } catch (err) {
+      console.error('[Murmur] Live stop failed:', err);
+    } finally {
+      isLiveStopping = false;
+      isLiveDictating = false;
+      typingEngine?.abort();
+    }
+    if (overlayWindow && !overlayWindow.isDestroyed()) {
+      overlayWindow.webContents.send(IPC_CHANNELS.RECORDING_STOP);
+    }
+    updateOverlayState('complete');
+    setTimeout(() => updateOverlayState('idle'), 1000);
+    return;
+  }
 
   console.log('[Murmur] Stopping recording...');
   updateOverlayState('processing');
@@ -245,6 +356,15 @@ function cancelRecording() {
   isRecording = false;
 
   console.log('[Murmur] Cancelling recording...');
+
+  // Live mode: abort the engine and tear down the streaming session.
+  // committed-but-already-typed text stays in the user's app (we can't undo it).
+  if (isLiveDictating) {
+    typingEngine?.abort();
+    stopEngineTickTimer();
+    void streamingTranscriptionService?.stop();
+    isLiveDictating = false;
+  }
 
   if (overlayWindow && !overlayWindow.isDestroyed()) {
     overlayWindow.webContents.send(IPC_CHANNELS.RECORDING_CANCEL);
@@ -420,11 +540,17 @@ function setupIpcHandlers() {
       const current = getSettings();
       const updated = { ...current, ...settings };
       setSettings(updated);
+      // Re-read so the renderer sees normalized state (live-dictation invariant etc.).
+      const persisted = getSettings();
 
       if (settings.apiKeys) {
         transcriptionService?.updateApiKeys(settings.apiKeys);
+        streamingTranscriptionService?.updateApiKeys(settings.apiKeys);
         llmService?.updateApiKeys(settings.apiKeys);
       }
+
+      // Live-dictation mode/stability take effect on the NEXT session, not
+      // mid-flight — see startRecording() where we re-snapshot from settings.
 
       if (settings.hotkeys) {
         hotkeyService?.updateHotkeys(settings.hotkeys);
@@ -436,7 +562,7 @@ function setupIpcHandlers() {
         });
       }
 
-      return updated;
+      return persisted;
     } catch (error) {
       console.error('[Murmur] Failed to set settings:', error);
       return DEFAULT_SETTINGS;
@@ -478,6 +604,12 @@ function setupIpcHandlers() {
       pendingAudioResolve = null;
       pendingAudioReject = null;
     }
+    // Tear down a live session if one was active — otherwise isLiveDictating
+    // and the tick timer leak and the next session sees stale state.
+    if (isLiveDictating) {
+      tearDownLiveSession();
+      // tearDownLiveSession already sent RECORDING_CANCEL; clear isRecording.
+    }
     isRecording = false;
     updateOverlayState('error', { error });
     setTimeout(() => updateOverlayState('idle'), 3000);
@@ -506,6 +638,42 @@ function setupIpcHandlers() {
     }
   });
 
+  // setupIpcHandlers() runs before initializeServices() so the renderer can
+  // surface a clear error if it calls into us before initialization completes.
+  // That's why each streaming handler null-checks `streamingTranscriptionService`.
+  ipcMain.handle(
+    IPC_CHANNELS.STREAMING_SESSION_START,
+    async (event, sampleRate?: number): Promise<{ ok: true } | { ok: false; error: string }> => {
+      if (!streamingTranscriptionService) {
+        return { ok: false, error: 'Streaming service not initialized' };
+      }
+      try {
+        await streamingTranscriptionService.start({
+          sampleRate,
+          target: event.sender,
+        });
+        return { ok: true };
+      } catch (error) {
+        return {
+          ok: false,
+          error: error instanceof Error ? error.message : 'Failed to start streaming session',
+        };
+      }
+    }
+  );
+
+  ipcMain.handle(IPC_CHANNELS.STREAMING_SESSION_STOP, async (): Promise<{ ok: true }> => {
+    if (streamingTranscriptionService) {
+      await streamingTranscriptionService.stop();
+    }
+    return { ok: true };
+  });
+
+  ipcMain.on(IPC_CHANNELS.STREAMING_AUDIO_CHUNK, (_event, chunk: ArrayBuffer) => {
+    if (!streamingTranscriptionService || !chunk) return;
+    streamingTranscriptionService.sendAudio(Buffer.from(chunk));
+  });
+
   ipcMain.handle(IPC_CHANNELS.VALIDATE_API_KEY, async (_, provider: string, apiKey: string) => {
     try {
       switch (provider) {
@@ -515,6 +683,8 @@ function setupIpcHandlers() {
           return await transcriptionService?.validateOpenAIKey(apiKey);
         case 'mistral':
           return await transcriptionService?.validateMistralKey(apiKey);
+        case 'assemblyai':
+          return await transcriptionService?.validateAssemblyAIKey(apiKey);
         case 'anthropic':
           return await llmService?.validateAnthropicKey(apiKey);
         case 'gemini':
@@ -536,8 +706,57 @@ async function initializeServices() {
   const settings = getSettings();
 
   transcriptionService = new TranscriptionService(settings.apiKeys);
+  streamingTranscriptionService = new StreamingTranscriptionService(settings.apiKeys);
   llmService = new LLMService(settings.apiKeys);
   pasteService = new PasteService();
+  typingService = new TypingService();
+  typingEngine = new TypingEngine(typingService, {
+    mode: settings.liveDictationTypingMode,
+    stabilityMs: settings.liveDictationStabilityMs,
+  });
+
+  // Route streaming events into the typing engine when a live session is active.
+  streamingTranscriptionService.on('open', (event) => {
+    console.log(`[Streaming] session opened id=${event.sessionId}`);
+  });
+  streamingTranscriptionService.on('turn', (event) => {
+    console.log(
+      `[Streaming] turn endOfTurn=${event.endOfTurn} active=${isLiveDictating || isLiveStopping} text="${event.transcript.slice(0, 80)}"`
+    );
+    // Route while the session is open OR while we're in the stop window —
+    // AssemblyAI may emit the final formatted "Turn" event after we initiate
+    // close. The engine's own abort flag (set in stopRecording's finally)
+    // guards against any genuinely-late events arriving past teardown.
+    if (!typingEngine || (!isLiveDictating && !isLiveStopping)) return;
+    void typingEngine.onTurn(event);
+  });
+  streamingTranscriptionService.on('error', (err) => {
+    console.error('[Streaming] error:', err.message);
+    if (isLiveDictating) {
+      // Abort engine + reset state so any in-flight ops stop emitting keystrokes
+      // into the user's app. Phase 6 ring-buffer fallback to batch is deferred —
+      // for now we surface the error and end the session cleanly so the next
+      // hotkey press doesn't hang in the batch path.
+      tearDownLiveSession();
+      updateOverlayState('error', { error: `Live dictation: ${err.message}` });
+      setTimeout(() => updateOverlayState('idle'), 3000);
+    }
+  });
+  streamingTranscriptionService.on('close', (event) => {
+    console.log(`[Streaming] session closed code=${event.code} reason=${event.reason}`);
+    if (isLiveStopping) {
+      // Normal stop in progress — stopRecording's live branch owns teardown.
+      // Just clean up the tick timer; the rest is the stop path's job.
+      stopEngineTickTimer();
+      return;
+    }
+    if (isLiveDictating) {
+      tearDownLiveSession();
+      updateOverlayState('idle');
+    } else {
+      stopEngineTickTimer();
+    }
+  });
 
   hotkeyService = new HotkeyService(settings.hotkeys);
   hotkeyService.on('keyDown', () => {
@@ -599,6 +818,10 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   hotkeyService?.stop();
+  // Tear down any active streaming session so AssemblyAI gets a clean close
+  // rather than a hard socket drop. The orchestrator's stop() is async but we
+  // can't await here; the close has its own internal timeout (CLOSE_TIMEOUT_MS).
+  void streamingTranscriptionService?.stop();
   closeDatabase();
 
   // Destroy tray so nothing keeps the process alive
